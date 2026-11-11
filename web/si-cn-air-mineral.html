@@ -263,6 +263,11 @@ pre.nota{background:var(--surface-2);border:1px solid var(--line);border-radius:
 .np .nr{display:flex;justify-content:space-between;gap:10px;padding:2px 0}.np .nr span{color:#444}.np .nr b{text-align:right;font-weight:600}
 .np .nr.big b{font-size:15px}.np hr{border:0;border-top:1px dashed #888;margin:7px 0}
 .np .nsig{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;font-size:11px;margin-top:12px}.np .nsig i{display:block;height:38px;border-bottom:1px solid #111;margin:2px 6px 3px}
+.lv-tabs{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.ringkasan-wrap{position:relative;padding:4px 0}
+.ringkasan-full{position:absolute;top:0;right:0;z-index:2}
+.ringkasan-wrap:fullscreen{overflow:auto;padding:16px;background:#fff}
+.ringkasan-wrap:fullscreen .ringkasan-full{position:fixed;top:12px;right:12px}
 .ticker{background:#fde8e8;color:#8a1c1c;border-radius:8px;overflow:hidden;white-space:nowrap;margin-bottom:12px;border:1px solid #f3b8b8}
 .ticker-in{display:inline-block;padding:8px 0;font-weight:600;font-size:13px;animation:tickerjalan 25s linear infinite}
 @keyframes tickerjalan{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
@@ -873,11 +878,11 @@ function checks(){
    ========================================================= */
 const NAV={
   komisaris:[['kom','Beranda'],['penjualan','Penjualan'],['piutang','Piutang'],['hpp','HPP & Laba'],['kas','Kas & Bank'],['produksi','Produksi'],['bahan','Stok Bahan Baku'],['live','Papan Live']],
-  owner:[['dashboard','Ringkasan'],['label','Cetak Label Dus'],['muatan','Muatan'],['telusur','Penelusuran Dus'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['pelanggan','Pelanggan'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['gaji','Gaji'],['hpp','HPP & Laba'],['#','Operasional'],['live','Papan Live'],['ringkasanlive','Ringkasan Harian'],['absensi','Absensi'],['produksi','Produksi'],['sanitasi','Sanitasi'],['peralatan','Peralatan'],['perawatan','Perawatan'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['cocok','Cocokkan Gudang'],['bahan','Bahan Baku'],['pembelian','Pembelian Bahan'],['#','Kontrol'],['audit','Audit Internal'],['rtm','Tinjauan Manajemen'],['log','Log Aktivitas'],['laporan','Laporan & Cetak'],['validasi','Validasi Data'],['master','Master Data']],
+  owner:[['dashboard','Ringkasan'],['label','Cetak Label Dus'],['muatan','Muatan'],['telusur','Penelusuran Dus'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['pelanggan','Pelanggan'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['gaji','Gaji'],['hpp','HPP & Laba'],['#','Operasional'],['live','Papan Live'],['absensi','Absensi'],['produksi','Produksi'],['sanitasi','Sanitasi'],['peralatan','Peralatan'],['perawatan','Perawatan'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['cocok','Cocokkan Gudang'],['bahan','Bahan Baku'],['pembelian','Pembelian Bahan'],['#','Kontrol'],['audit','Audit Internal'],['rtm','Tinjauan Manajemen'],['log','Log Aktivitas'],['laporan','Laporan & Cetak'],['validasi','Validasi Data'],['master','Master Data']],
   sales:[['beranda','Beranda'],['muatan','Muatan Kendaraan'],['penjualan','Penjualan'],['telusur','Penelusuran Dus'],['penerimaan','Penagihan'],['piutang','Piutang Saya'],['pelanggan','Pelanggan'],['absensi','Absen']],
   gudang:[['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['penjualan','Barang Keluar'],['absensi','Absensi']],
   produksi:[['produksi','Produksi'],['label','Cetak Label Dus'],['telusur','Penelusuran Dus'],['sanitasi','Sanitasi'],['peralatan','Peralatan'],['perawatan','Perawatan'],['absensi','Absensi'],['bahan','Bahan Baku']],
-  manager:[['produksi','Produksi'],['#','Gudang'],['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['hpp','HPP & Laba'],['#','Lainnya'],['live','Papan Live'],['ringkasanlive','Ringkasan Harian'],['absensi','Absensi']],
+  manager:[['produksi','Produksi'],['#','Gudang'],['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['hpp','HPP & Laba'],['#','Lainnya'],['live','Papan Live'],['absensi','Absensi']],
   lab:[['uji','Uji QC'],['absensi','Absensi']],
   freelance:[['absensi','Absensi']],
   driver:[['muatan','Muatan Saya'],['absensi','Absensi']]
@@ -1862,7 +1867,7 @@ function ringkasanLiveHTML(){
   <div class="card" style="margin-bottom:14px"><h2>Penjualan</h2><div class="kpis">${kpi('Nota',String(inv.length),nf(dusNota,0)+' dus','hl')}${kpi('Penjualan tunai',rp(jTunai))}${kpi('Penjualan kredit',rp(jKredit))}${kpi('Total penjualan',rp(jTunai+jKredit))}</div></div>
   <div class="card" style="margin-bottom:14px"><h2>Kas hari ini</h2><div class="kpis">${kpi('Pemasukan tunai',rp(pemTunai))}${kpi('Penagihan masuk',rp(pemTagih))}${kpi('Pengeluaran',rp(keluar))}${kpi('Setor ke bank',rp(setor))}${kpi('Saldo kas semua akun',rp(tot),AK.map(a=>a+' '+rp(c.kasAkun[a]||0)).join(' · '))}</div></div>`;
 }
-V.live=()=>{
+const _liveInti=()=>{
   const L=liveData(); const pct=Math.min(100,Math.round(L.jadi/L.target*100));
   if(F.lv_pixel!==false){ return flatPageAll(L); }
   const hadir=L.kar.filter(k=>L.st(k)==='hadir').length, muatTot=L.muatHari.reduce((a,x)=>a+N(x.dus),0), notaDus=L.nota.reduce((a,i)=>a+N(i.dus),0);
@@ -1875,7 +1880,14 @@ V.live=()=>{
     <div class="card"><h2>Kendaraan & muatan <small>sekali jalan = satu perjalanan</small></h2>${lvTrips(L)}</div>
   </div>`;
 };
-V.ringkasanlive=()=>ringkasanLiveHTML();
+const lvTabs=()=>{ const v=F.lv_view||'papan'; return `<div class="lv-tabs"><button class="btn ${v!=='ringkasan'?'pri':''}" data-act="lvView" data-v="papan">Papan Live</button><button class="btn ${v==='ringkasan'?'pri':''}" data-act="lvView" data-v="ringkasan">Ringkasan harian</button></div>`; };
+V.live=()=>{
+  const owMgr=isOwner()||ME.role==='manager';
+  if(owMgr && F.lv_view==='ringkasan'){
+    return lvTabs()+`<div id="ringkasanWrap" class="ringkasan-wrap"><button class="btn pri ringkasan-full" data-act="lvFull">⛶ Layar penuh</button>${ringkasanLiveHTML()}</div>`;
+  }
+  return (owMgr?lvTabs():'')+_liveInti();
+};
 const PULANG_OTO_JAM='16:30', PULANG_OTO_DONE=new Set();
 function pulangOtomatisCek(){
   try{
@@ -3102,7 +3114,7 @@ const ACT={
   tab:d=>{TAB[d.key]=d.tab;render()}, setF:d=>{F[d.key]=F[d.key]===d.val?'':d.val;render()}, clearF:d=>{F[d.key]='';render()},
   waTagih:d=>{ const c=C(); let l=c.piutang.filter(i=>i.no===d.no); if(!l.length){ l=c.inv.filter(i=>i.no===d.no&&N(i.sisa)>0).map(i=>({...i,jatuh_tempo:i.jatuh_tempo||i.tanggal})); } if(l.length)waTagihModal(l); }, waPel:d=>{ const l=C().piutang.filter(i=>String(i.pelanggan)===String(d.id)&&N(i.sisa)>0).sort((a,b)=>String(a.jatuh_tempo||'').localeCompare(String(b.jatuh_tempo||''))); if(l.length)waTagihModal(l); else toast('Tidak ada tagihan','bad'); },
   newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
-  newPengeluaran:()=>formPengeluaran(), lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
+  newPengeluaran:()=>formPengeluaran(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
   livePixel:()=>{F.lv_pixel=(F.lv_pixel===false); bump()}, newMutasi:()=>formMutasi(), newOpname:()=>formOpname(), sanCek:d=>sanToggle(d.k), absMasuk:d=>absen(d.id,'masuk'), wajahReset:d=>wajahReset(d.id), absPulang:d=>absen(d.id,'pulang'), absKet:d=>formAbsenKet(d.id), fotoProfil:d=>fotoProfil(d.id), fotoLihat:d=>fotoLihat(d.path), liveFull:()=>{const el=document.documentElement; F.lv_full=!F.lv_full; try{ if(F.lv_full){(el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el)} else if(document.fullscreenElement){document.exitFullscreen&&document.exitFullscreen()} }catch(e){} bump()}, newKeluar:()=>formKeluar(), newHutangLain:()=>formHutangLain(), newBayarHutang:()=>formBayarHutang(), bayarKode:d=>formBayarHutang(null,d.kode),
   newGaji:()=>formGaji(), newWilayah:()=>formWilayah(), ubahHarga:d=>formUbahHarga(D.wilayah.find(w=>w.id===d.id)), hargaMassal:formHargaMassal,
   csvHal:()=>csvHal(), newKaryawan:()=>formKaryawan(), newKreditur:()=>formKreditur(), newBahan:()=>formBahan(), newProduk:()=>formProduk(), editPengaturan:formPengaturan,
