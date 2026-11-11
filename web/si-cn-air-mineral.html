@@ -2035,12 +2035,28 @@ V.piutang=()=>{
 };
 
 V.pelanggan=()=>head('Pelanggan','Satu nama satu pelanggan. Wilayah menentukan harga, bonus, dan tempo kredit otomatis.',CAN.addPelanggan()?`<button class="btn pri" data-act="newPelanggan">+ Pelanggan</button>`:'')+pelangganBody();
+function openPelDetail(id){
+  const c=C(); const p=D.pelanggan.find(x=>String(x.id)===String(id)); if(!p)return;
+  const invs=c.inv.filter(i=>String(i.pelanggan)===String(id));
+  const noSet=new Set(invs.map(i=>i.no));
+  const bayar=D.pembayaran.filter(b=>b.ref&&noSet.has(b.ref)).sort((a,b)=>String(b.tanggal||'').localeCompare(String(a.tanggal||'')));
+  const tot=invs.reduce((a,i)=>a+N(i.bersih),0), sudah=invs.reduce((a,i)=>a+i.bayar,0), sisa=invs.reduce((a,i)=>a+i.sisa,0);
+  const wil=c.wil[p.wilayah];
+  openModal(`<div class="mh"><h3>${esc(p.nama)}</h3><button class="btn sm ghost" data-act="close">✕</button></div>
+  <div class="mb"><p class="muted" style="font-size:13px;margin:0 0 10px">${esc(wil?.nama||'Tanpa wilayah')}${p.hp?' · '+esc(p.hp):''}${p.sales?' · Sales: '+esc(p.sales):''}</p>
+  <div class="rg">${kpi('Total tagihan',rp(tot),`${invs.length} invoice`)}${kpi('Sudah dibayar',rp(sudah),'')}${kpi('Sisa piutang',rp(sisa),'',sisa>0?'bad':'')}</div>
+  <h2 style="margin:16px 0 6px;font-size:15px">Invoice</h2>
+  ${tbl([{h:'Tanggal',f:i=>tgl(i.tanggal)},{h:'No. invoice',f:i=>`<span class="mono">${esc(i.no)}</span>`},{h:'Jenis',f:i=>esc(i.jenis||'')},{h:'Total',c:'num',f:i=>rp(i.bersih)},{h:'Dibayar',c:'num',f:i=>rp(i.bayar)},{h:'Sisa',c:'num',f:i=>i.sisa>0?rp(i.sisa):'–'},{h:'Status',f:i=>esc(i.status)}],invs,{empty:'Belum ada invoice.'})}
+  <h2 style="margin:16px 0 6px;font-size:15px">Riwayat pembayaran</h2>
+  ${tbl([{h:'Tanggal',f:b=>tgl(b.tanggal)},{h:'Invoice',f:b=>`<span class="mono">${esc(b.ref)}</span>`},{h:'Jenis',f:b=>esc(b.jenis||'')},{h:'Metode',f:b=>esc(b.metode||'')+(b.akun?' · '+esc(b.akun):'')},{h:'Nominal',c:'num',f:b=>rp(b.nominal)}],bayar,{empty:'Belum ada pembayaran.'})}
+  </div>`,{wide:true});
+}
 function pelangganBody(){
   const c=C(); let rows=[...D.pelanggan].sort((a,b)=>String(a.nama).localeCompare(b.nama));
   if(ME.role==='sales'&&F.mine_pl!=='all')rows=rows.filter(p=>!p.sales||p.sales===meName());
   const q=(F.q_pl||'').toLowerCase(); if(q)rows=rows.filter(p=>(p.nama+' '+(c.wil[p.wilayah]?.nama||'')+' '+(p.alamat||'')).toLowerCase().includes(q));
   return `<div class="filters">${searchF('q_pl','Cari nama / wilayah / alamat')}${ME.role==='sales'?selF('mine_pl','Tampilkan',[['','Pelanggan saya'],['all','Semua pelanggan']]):''}</div>`+
-  tbl([{h:'Nama',f:p=>`<b>${esc(p.nama)}</b>${p.hp?`<span class="sub">${esc(p.hp)}</span>`:''}`},{h:'Wilayah',f:p=>esc(c.wil[p.wilayah]?.nama||'—')+zone(c.wil[p.wilayah]?.zona)},{h:'Alamat',f:p=>esc(p.alamat||'')},{h:'Sales',f:p=>esc(p.sales||'')},{h:'Harga kredit kini',c:'num',f:p=>{const h=hargaBerlaku(p.wilayah,'Kredit',TODAY);return h!=null?rp(h):'<span class="warnt">belum ada</span>'}},{h:'Limit kredit',c:'num',f:p=>N(p.limit_kredit)?rp(p.limit_kredit):'–'},{h:'Piutang',c:'num',f:p=>{const v=c.piutangPel[p.id]||0;return v?(N(p.limit_kredit)&&v>N(p.limit_kredit)?`<span class="badt">${rp(v)}</span>`:rp(v)):'–'}},{h:'',c:'act',f:p=>(CAN.addPelanggan()?`<button class="btn sm ghost" data-act="edit" data-col="pelanggan" data-id="${p.id}">Ubah</button>`:'')+(isOwner()?` <button class="btn sm ghost danger" data-act="delMaster" data-col="pelanggan" data-id="${p.id}">Hapus</button>`:'')}],rows,{empty:'Belum ada pelanggan.'});
+  tbl([{h:'Nama',f:p=>`<b><button class="linkbtn" data-act="detailPel" data-id="${p.id}">${esc(p.nama)}</button></b>${p.hp?`<span class="sub">${esc(p.hp)}</span>`:''}`},{h:'Wilayah',f:p=>esc(c.wil[p.wilayah]?.nama||'—')+zone(c.wil[p.wilayah]?.zona)},{h:'Alamat',f:p=>esc(p.alamat||'')},{h:'Sales',f:p=>esc(p.sales||'')},{h:'Harga kredit kini',c:'num',f:p=>{const h=hargaBerlaku(p.wilayah,'Kredit',TODAY);return h!=null?rp(h):'<span class="warnt">belum ada</span>'}},{h:'Limit kredit',c:'num',f:p=>N(p.limit_kredit)?rp(p.limit_kredit):'–'},{h:'Piutang',c:'num',f:p=>{const v=c.piutangPel[p.id]||0;return v?(N(p.limit_kredit)&&v>N(p.limit_kredit)?`<span class="badt">${rp(v)}</span>`:rp(v)):'–'}},{h:'',c:'act',f:p=>(CAN.addPelanggan()?`<button class="btn sm ghost" data-act="edit" data-col="pelanggan" data-id="${p.id}">Ubah</button>`:'')+(isOwner()?` <button class="btn sm ghost danger" data-act="delMaster" data-col="pelanggan" data-id="${p.id}">Hapus</button>`:'')}],rows,{empty:'Belum ada pelanggan.'});
 }
 
 V.pengeluaran=()=>{
@@ -3112,6 +3128,7 @@ const EDIT={uji_air:r=>formUjiAir(r.tahap,r),peralatan:r=>formPeralatan(r),peraw
 const ACT={
   close:closeModal, toggleDrawer:()=>{drawer=!drawer;render()},
   tab:d=>{TAB[d.key]=d.tab;render()}, setF:d=>{F[d.key]=F[d.key]===d.val?'':d.val;render()}, clearF:d=>{F[d.key]='';render()},
+  detailPel:d=>openPelDetail(d.id),
   waTagih:d=>{ const c=C(); let l=c.piutang.filter(i=>i.no===d.no); if(!l.length){ l=c.inv.filter(i=>i.no===d.no&&N(i.sisa)>0).map(i=>({...i,jatuh_tempo:i.jatuh_tempo||i.tanggal})); } if(l.length)waTagihModal(l); }, waPel:d=>{ const l=C().piutang.filter(i=>String(i.pelanggan)===String(d.id)&&N(i.sisa)>0).sort((a,b)=>String(a.jatuh_tempo||'').localeCompare(String(b.jatuh_tempo||''))); if(l.length)waTagihModal(l); else toast('Tidak ada tagihan','bad'); },
   newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
   newPengeluaran:()=>formPengeluaran(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
