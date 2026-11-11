@@ -2003,7 +2003,7 @@ async function midtransLink(no){
 function waTagihTeks(list){
   const nama=list[0].pelNama, tot=list.reduce((a,i)=>a+N(i.sisa),0);
   const baris=list.map(i=>`- *No. invoice:* ${i.no}\n  Tanggal: ${tgl(i.tanggal)}\n  Jatuh tempo: ${tgl(i.jatuh_tempo)}${i.lewat>0?` (lewat ${i.lewat} hari)`:''}\n  Nilai: ${rp(i.bersih)}\n  Sudah dibayar: ${rp(N(i.bayar))}\n  Sisa tagihan: *${rp(i.sisa)}*`).join('\n\n');
-  return `Yth. ${nama},\n\nBerikut rincian tagihan dari CV QQ Eka Putra:\n\n${baris}\n\nTotal sisa tagihan: *${rp(tot)}*\n\nPembayaran dapat dilakukan melalui transfer ke:\n*BRI ${REK_BRI.no.replace(/\s/g,'')}*\na/n ${REK_BRI.nama}\n\nMohon konfirmasi setelah transfer. Terima kasih atas kerja samanya.\n\nHormat kami,\nCV QQ Eka Putra`;
+  return `Yth. ${nama},\n\nBerikut rincian tagihan dari CV QQ Eka Putra:\n\n${baris}\n\nTotal sisa tagihan: *${rp(tot)}*\n\nPembayaran dapat dilakukan melalui transfer ke:\n*BRI - No. rek: ${REK_BRI.no.replace(/\s/g,'')}*\na/n ${REK_BRI.nama}\n\nMohon konfirmasi setelah transfer. Terima kasih atas kerja samanya.\n\nHormat kami,\nCV QQ Eka Putra`;
 }
 async function waTagihModal(list){
   const hp=list[0].pl?.hp||'';
