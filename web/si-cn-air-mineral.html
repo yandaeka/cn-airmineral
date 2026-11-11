@@ -2010,9 +2010,12 @@ async function waTagihModal(list){
   openModal(`<div class="mh"><h3>Tagihan via WhatsApp</h3><button class="btn sm ghost" data-act="close">✕</button></div>
   <div class="mb"><div class="full"><label>No. WhatsApp pelanggan<input id="waHp" type="tel" value="${esc(hp)}" placeholder="08xxxxxxxxxx" style="width:100%"></label></div>
   <div class="full" style="margin-top:10px"><label>Isi pesan<textarea id="waTxt" rows="12" style="width:100%">${esc(waTagihTeks(list))}</textarea></label></div>
+  <div class="acts" style="margin-top:10px;gap:8px;flex-wrap:wrap"><button class="btn sm" id="waSalinRek">Salin no. rek</button><button class="btn sm" id="waSalinSisa">Salin sisa tagihan</button></div>
   <p class="muted" style="font-size:12.5px">Pesan dikirim manual: tekan "Buka WhatsApp", lalu tekan kirim di aplikasi WhatsApp.</p></div>
   <div class="mf"><button class="btn" data-act="close">Tutup</button><button class="btn" id="waSalin">Salin teks</button><button class="btn pri" id="waBuka">Buka WhatsApp</button></div>`);
   $('#waBuka').onclick=()=>{ const n=waNum($('#waHp').value); const t=encodeURIComponent($('#waTxt').value); window.open((n?`https://wa.me/${n}`:'https://wa.me/')+'?text='+t,'_blank'); };
+  $('#waSalinRek').onclick=()=>{ const t='BRI-'+REK_BRI.no.replace(/\s/g,''); navigator.clipboard.writeText(t).then(()=>toast('No. rek disalin')).catch(()=>toast('Gagal menyalin','bad')); };
+  $('#waSalinSisa').onclick=()=>{ const t=String(list.reduce((a,i)=>a+N(i.sisa),0)); navigator.clipboard.writeText(t).then(()=>toast('Sisa tagihan disalin')).catch(()=>toast('Gagal menyalin','bad')); };
   $('#waSalin').onclick=()=>{ navigator.clipboard.writeText($('#waTxt').value).then(()=>toast('Teks disalin')).catch(()=>toast('Gagal menyalin','bad')); };
 }
 V.piutang=()=>{
