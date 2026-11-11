@@ -1,0 +1,11 @@
+node_modules/
+web/build/node_modules/
+web/dist/
+*.zip
+*.pdf
+*.png
+!web/static/*.png
+!web/vendor/**/*.png
+!web/*.png
+backup-*.html
+scratchpad/
