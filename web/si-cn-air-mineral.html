@@ -1935,7 +1935,7 @@ V.penjualan=()=>{
   let rows=c.inv; if(sales)rows=rows.filter(i=>i.sales===meName());
   const mSel=monthSel('m_pj',rows.map(i=>i.tanggal));
   rows=rows.filter(i=>inM(i.tanggal,F.m_pj));
-  const sl=isOwner()?selF('s_pj','Sales',[['','Semua sales'],...[...new Set(c.inv.map(i=>i.sales))].sort()]):'';
+  const sl=isOwner()?selF('s_pj','Sales',[['','Semua sales'],...[...new Set([...salesNames(),...c.inv.map(i=>i.sales)].filter(Boolean))].sort()]):'';
   if(F.s_pj)rows=rows.filter(i=>i.sales===F.s_pj);
   if(F.j_pj)rows=rows.filter(i=>i.jenis===F.j_pj);
   if(F.z_pj)rows=rows.filter(i=>i.zona===F.z_pj);
@@ -2019,7 +2019,7 @@ async function waTagihModal(list){
 V.piutang=()=>{
   const c=C(); const sales=ME.role==='sales';
   let rows=c.piutang; if(sales)rows=rows.filter(i=>i.sales===meName());
-  const sl=!sales?selF('s_pi','Sales',[['','Semua sales'],...[...new Set(c.piutang.map(i=>i.sales))].sort()]):''; if(F.s_pi)rows=rows.filter(i=>i.sales===F.s_pi);
+  const sl=!sales?selF('s_pi','Sales',[['','Semua sales'],...[...new Set([...salesNames(),...c.piutang.map(i=>i.sales)].filter(Boolean))].sort()]):''; if(F.s_pi)rows=rows.filter(i=>i.sales===F.s_pi);
   const B=[['b0','Belum jatuh tempo',i=>!i.lewat],['b1','Lewat 1–30 hari',i=>i.lewat>=1&&i.lewat<=30],['b2','Lewat 31–60 hari',i=>i.lewat>30&&i.lewat<=60],['b3','Lewat 61–90 hari',i=>i.lewat>60&&i.lewat<=90],['b4','Lewat > 90 hari',i=>i.lewat>90]];
   const bk=F.b_pi||''; const sum=B.map(([k,l,fn])=>{const x=rows.filter(fn);return {k,l,n:x.length,v:x.reduce((a,i)=>a+i.sisa,0)}});
   const shown=bk?rows.filter(B.find(b=>b[0]===bk)[2]):rows;
@@ -2054,8 +2054,8 @@ function openPelDetail(id){
 function pelangganBody(){
   const c=C(); let rows=[...D.pelanggan].sort((a,b)=>String(a.nama).localeCompare(b.nama));
   if(ME.role==='sales'&&F.mine_pl!=='all')rows=rows.filter(p=>!p.sales||p.sales===meName());
-  const q=(F.q_pl||'').toLowerCase(); if(q)rows=rows.filter(p=>(p.nama+' '+(c.wil[p.wilayah]?.nama||'')+' '+(p.alamat||'')).toLowerCase().includes(q));
-  return `<div class="filters">${searchF('q_pl','Cari nama / wilayah / alamat')}${ME.role==='sales'?selF('mine_pl','Tampilkan',[['','Pelanggan saya'],['all','Semua pelanggan']]):''}</div>`+
+  const q=(F.q_pl||'').toLowerCase(); if(q)rows=rows.filter(p=>(p.nama+' '+(c.wil[p.wilayah]?.nama||'')+' '+(p.alamat||'')+' '+(p.sales||'')).toLowerCase().includes(q));
+  return `<div class="filters">${searchF('q_pl','Cari nama / wilayah / alamat / sales')}${ME.role==='sales'?selF('mine_pl','Tampilkan',[['','Pelanggan saya'],['all','Semua pelanggan']]):''}</div>`+
   tbl([{h:'Nama',f:p=>`<b><button class="linkbtn" data-act="detailPel" data-id="${p.id}">${esc(p.nama)}</button></b>${p.hp?`<span class="sub">${esc(p.hp)}</span>`:''}`},{h:'Wilayah',f:p=>esc(c.wil[p.wilayah]?.nama||'—')+zone(c.wil[p.wilayah]?.zona)},{h:'Alamat',f:p=>esc(p.alamat||'')},{h:'Sales',f:p=>esc(p.sales||'')},{h:'Harga kredit kini',c:'num',f:p=>{const h=hargaBerlaku(p.wilayah,'Kredit',TODAY);return h!=null?rp(h):'<span class="warnt">belum ada</span>'}},{h:'Limit kredit',c:'num',f:p=>N(p.limit_kredit)?rp(p.limit_kredit):'–'},{h:'Piutang',c:'num',f:p=>{const v=c.piutangPel[p.id]||0;return v?(N(p.limit_kredit)&&v>N(p.limit_kredit)?`<span class="badt">${rp(v)}</span>`:rp(v)):'–'}},{h:'',c:'act',f:p=>(CAN.addPelanggan()?`<button class="btn sm ghost" data-act="edit" data-col="pelanggan" data-id="${p.id}">Ubah</button>`:'')+(isOwner()?` <button class="btn sm ghost danger" data-act="delMaster" data-col="pelanggan" data-id="${p.id}">Hapus</button>`:'')}],rows,{empty:'Belum ada pelanggan.'});
 }
 
