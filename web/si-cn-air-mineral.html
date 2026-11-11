@@ -2000,17 +2000,16 @@ async function midtransLink(no){
   const r=await fetch(`${SB_URL}/functions/v1/midtrans-link`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+(session?.access_token||SB_KEY)},body:JSON.stringify({no})});
   const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||('gagal '+r.status)); return j.url;
 }
-function waTagihTeks(list,links={}){
+function waTagihTeks(list){
   const nama=list[0].pelNama, tot=list.reduce((a,i)=>a+N(i.sisa),0);
-  const baris=list.map(i=>`• No. ${i.no} (tgl ${tgl(i.tanggal)}), jatuh tempo ${tgl(i.jatuh_tempo)}${i.lewat>0?' — lewat '+i.lewat+' hari':''}\n   Nilai ${rp(i.bersih)}, dibayar ${rp(N(i.bayar))}, sisa ${rp(i.sisa)}`+(links[i.no]?`\n   Bayar online: ${links[i.no]}`:'')).join('\n');
-  return `Yth. ${nama},\n\nDari CV QQ Eka Putra, kami informasikan rincian tagihan:\n\n${baris}\n\nTotal sisa tagihan: ${rp(tot)}\n\nMohon pembayarannya. Terima kasih atas kerja samanya.\n\nCV QQ Eka Putra`;
+  const baris=list.map(i=>`- *No. invoice:* ${i.no}\n  Tanggal: ${tgl(i.tanggal)}\n  Jatuh tempo: ${tgl(i.jatuh_tempo)}${i.lewat>0?` (lewat ${i.lewat} hari)`:''}\n  Nilai: ${rp(i.bersih)}\n  Sudah dibayar: ${rp(N(i.bayar))}\n  Sisa tagihan: *${rp(i.sisa)}*`).join('\n\n');
+  return `Yth. ${nama},\n\nBerikut rincian tagihan dari CV QQ Eka Putra:\n\n${baris}\n\nTotal sisa tagihan: *${rp(tot)}*\n\nPembayaran dapat dilakukan melalui transfer ke:\n*BRI ${REK_BRI.no}*\na/n ${REK_BRI.nama}\n\nMohon konfirmasi setelah transfer. Terima kasih atas kerja samanya.\n\nHormat kami,\nCV QQ Eka Putra`;
 }
 async function waTagihModal(list){
-  const hp=list[0].pl?.hp||''; const links={};
-  for(const i of list){ if(N(i.sisa)>0){ try{ links[i.no]=await midtransLink(i.no); }catch(e){ toast('Tautan pembayaran gagal: '+e.message,'bad'); } } }
+  const hp=list[0].pl?.hp||'';
   openModal(`<div class="mh"><h3>Tagihan via WhatsApp</h3><button class="btn sm ghost" data-act="close">✕</button></div>
   <div class="mb"><div class="full"><label>No. WhatsApp pelanggan<input id="waHp" type="tel" value="${esc(hp)}" placeholder="08xxxxxxxxxx" style="width:100%"></label></div>
-  <div class="full" style="margin-top:10px"><label>Isi pesan<textarea id="waTxt" rows="12" style="width:100%">${esc(waTagihTeks(list,links))}</textarea></label></div>
+  <div class="full" style="margin-top:10px"><label>Isi pesan<textarea id="waTxt" rows="12" style="width:100%">${esc(waTagihTeks(list))}</textarea></label></div>
   <p class="muted" style="font-size:12.5px">Pesan dikirim manual: tekan "Buka WhatsApp", lalu tekan kirim di aplikasi WhatsApp.</p></div>
   <div class="mf"><button class="btn" data-act="close">Tutup</button><button class="btn" id="waSalin">Salin teks</button><button class="btn pri" id="waBuka">Buka WhatsApp</button></div>`);
   $('#waBuka').onclick=()=>{ const n=waNum($('#waHp').value); const t=encodeURIComponent($('#waTxt').value); window.open((n?`https://wa.me/${n}`:'https://wa.me/')+'?text='+t,'_blank'); };
