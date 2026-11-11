@@ -18,8 +18,8 @@ jobs:
       - name: Deploy audit-dokumen, laporan-harian, midtrans-link
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase functions deploy audit-dokumen --project-ref "$SUPABASE_PROJECT_REF"
-          supabase functions deploy laporan-harian --project-ref "$SUPABASE_PROJECT_REF"
-          supabase functions deploy midtrans-link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase functions deploy audit-dokumen --project-ref "$SUPABASE_PROJECT_REF" --yes
+          supabase functions deploy laporan-harian --project-ref "$SUPABASE_PROJECT_REF" --yes
+          supabase functions deploy midtrans-link --project-ref "$SUPABASE_PROJECT_REF" --yes
       - name: Deploy midtrans-notif (tanpa verifikasi JWT)
-        run: supabase functions deploy midtrans-notif --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+        run: supabase functions deploy midtrans-notif --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF" --yes
