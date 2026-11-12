@@ -1947,7 +1947,7 @@ V.penjualan=()=>{
   `<div class="filters">${mSel}${sl}${selF('j_pj','Jenis',[['','Tunai & kredit'],'Tunai','Kredit'])}${selF('z_pj','Zona',[['','DK & LK'],['DK','Dalam Kota'],['LK','Luar Kota']])}${searchF('q_pj','Cari pelanggan / no. invoice')}</div>
   <div class="kpis">${kpi('Invoice',rows.length)}${kpi('Dus terjual',nf(tot.d,0),`+ ${nf(tot.b,0)} dus bonus`)}${money?kpi('Penjualan bersih',rp(tot.v),'','hl')+kpi('Belum terbayar',rp(tot.s)):''}</div>`+
   tbl([{h:'No. invoice',f:i=>`<span class="mono">${i.no}</span>`},{h:'Tanggal',f:i=>tgl(i.tanggal)},{h:'Pelanggan',f:i=>`<b>${pelBtn(i.pelanggan,i.pelNama)}</b>${zone(i.zona)}<span class="sub">${esc(i.wilNama)}${i.pl?.alamat?' · '+esc(i.pl.alamat):''}</span>`},{h:'Sales',f:i=>esc(i.sales)},{h:'Jenis',f:i=>i.jenis},{h:'Dus',c:'num',f:i=>nf(i.dus,0)+(N(i.bonus)?`<span class="sub">+${i.bonus} bonus</span>`:'')+(N(i.retur)?`<span class="sub">retur ${i.retur}</span>`:'')},
-    ...(money?[{h:'Harga',c:'num',f:i=>rp(i.harga)},{h:'Bersih',c:'num',f:i=>`<b>${rp(i.bersih)}</b>`},{h:'Status',f:i=>invChip(i)}]:[]),
+    ...(money?[{h:'Harga',c:'num',f:i=>rp(i.harga)},{h:'Bersih',c:'num',f:i=>`<b>${rp(i.bersih)}</b>`},{h:'Status',f:i=>invChip(i)},{h:'Dicatat dari akun',f:i=>`<span class="sub">${esc(i.dibuat_oleh||'–')}</span>`}]:[]),
     {h:'',c:'act',f:i=>`<button class="btn sm ghost" data-act="nota" data-no="${i.no}">Nota</button>`+(i.sisa>0&&CAN.addPenerimaan()?` <button class="btn sm ghost" data-act="tagih" data-no="${i.no}">Terima</button> <button class="btn sm ghost" data-act="waTagih" data-no="${i.no}">Kirim QRIS via WA</button>`:'')+actCell('penjualan',i)}],rows,{empty:'Belum ada penjualan di periode ini.'});
 };
 
