@@ -2018,6 +2018,17 @@ async function waTagihModal(list){
   $('#waSalinSisa').onclick=()=>{ const t=String(list.reduce((a,i)=>a+N(i.sisa),0)); navigator.clipboard.writeText(t).then(()=>toast('Sisa tagihan disalin')).catch(()=>toast('Gagal menyalin','bad')); };
   $('#waSalin').onclick=()=>{ navigator.clipboard.writeText($('#waTxt').value).then(()=>toast('Teks disalin')).catch(()=>toast('Gagal menyalin','bad')); };
 }
+function kirimSalesTeks(nama,c){
+  const l=c.piutang.filter(i=>i.sales===nama&&i.lewat>30).sort((a,b)=>b.lewat-a.lewat);
+  const tot=l.reduce((a,i)=>a+i.sisa,0);
+  const baris=l.map((i,k)=>`${k+1}. ${i.pelNama}, ${i.no}, ${i.lewat} hari, sisa ${rp(i.sisa)}`).join('\n');
+  return `Assalamualaikum Pak ${nama.charAt(0)+nama.slice(1).toLowerCase()}, mohon bantu tagih pelanggan berikut yang sudah lewat jatuh tempo lebih dari 30 hari:\n\n${baris}\n\nTotal: ${rp(tot)}\nMohon kabari hasil penagihannya. Terima kasih.`;
+}
+function kirimSalesBtns(c){
+  const list=salesNames().filter(s=>c.piutang.some(i=>i.sales===s&&i.lewat>30));
+  if(!list.length)return '';
+  return `<div class="acts" style="margin:8px 0;gap:8px;flex-wrap:wrap">${list.map(s=>`<button class="btn sm pri" data-act="kirimSales" data-s="${esc(s)}">Kirim daftar lewat 30 hari ke ${esc(s)}</button>`).join('')}</div>`;
+}
 V.piutang=()=>{
   const c=C(); const sales=ME.role==='sales';
   let rows=c.piutang; if(sales)rows=rows.filter(i=>i.sales===meName());
@@ -2029,7 +2040,7 @@ V.piutang=()=>{
   const perPel={}; shown.forEach(i=>{const p=(perPel[i.pelanggan]??={id:i.pelanggan,nama:i.pelNama,zona:i.zona,wil:i.wilNama,sales:i.sales,n:0,sisa:0,old:i.tanggal,lewat:0});p.n++;p.sisa+=i.sisa;if(i.tanggal<p.old)p.old=i.tanggal;p.lewat=Math.max(p.lewat,i.lewat)});
   const tot=shown.reduce((a,i)=>a+i.sisa,0);
   return head(sales?'Piutang Saya':'Piutang','Piutang per invoice = penjualan kredit − semua pembayaran dengan nomor invoice yang sama. Umur dihitung dari jatuh tempo.')+
-  `<div class="filters">${sl}${bk?`<button class="btn sm" data-act="clearF" data-key="b_pi">Hapus filter umur ✕</button>`:''}</div>
+  `<div class="filters">${sl}${bk?`<button class="btn sm" data-act="clearF" data-key="b_pi">Hapus filter umur ✕</button>`:''}</div>${!sales?kirimSalesBtns(c):''}
   <div class="kpis">${sum.map(s=>`<button class="kpi btnlike ${s.k==='b4'&&s.n?'bad':s.k!=='b0'&&s.n?'warn':''} ${bk===s.k?'sel':''}" data-act="setF" data-key="b_pi" data-val="${s.k}"><div class="l">${s.l}</div><div class="v">${rp(s.v)}</div><div class="s">${s.n} invoice</div></button>`).join('')}</div>`+
   tabs('piutang',[['inv','Per invoice'],['pel','Per pelanggan']])+
   (view==='inv'?tbl([{h:'No. invoice',f:i=>`<span class="mono">${i.no}</span>`},{h:'Tanggal',f:i=>tgl(i.tanggal)},{h:'Pelanggan',f:i=>`<b>${pelBtn(i.pelanggan,i.pelNama)}</b>${zone(i.zona)}<span class="sub">${esc(i.wilNama)}${i.pl?.alamat?' · '+esc(i.pl.alamat):''}</span>`},...(sales?[]:[{h:'Sales',f:i=>esc(i.sales)}]),{h:'Nilai',c:'num',f:i=>rp(i.bersih)},{h:'Dibayar',c:'num',f:i=>i.bayar?rp(i.bayar):'–'},{h:'Sisa',c:'num',f:i=>`<b>${rp(i.sisa)}</b>`},{h:'Jatuh tempo',f:i=>tgl(i.jatuh_tempo)},{h:'Status',f:i=>invChip(i)},{h:'',c:'act',f:i=>`<button class="btn sm ghost" data-act="waTagih" data-no="${i.no}">WA</button> `+(CAN.addPenerimaan()?`<button class="btn sm ghost" data-act="nota" data-no="${i.no}">Nota</button> <button class="btn sm pri" data-act="tagih" data-no="${i.no}">Tagih</button>`:'')}],[...shown].sort((a,b)=>b.lewat-a.lewat||a.tanggal.localeCompare(b.tanggal)),{empty:'Tidak ada piutang.',foot:['Total','',...(sales?[]:['']),'','','',rp(tot),'','','']})
@@ -3148,6 +3159,7 @@ const ACT={
   close:closeModal, toggleDrawer:()=>{drawer=!drawer;render()},
   tab:d=>{TAB[d.key]=d.tab;render()}, setF:d=>{F[d.key]=F[d.key]===d.val?'':d.val;render()}, clearF:d=>{F[d.key]='';render()},
   detailPel:d=>openPelDetail(d.id),
+  kirimSales:d=>{ const c=C(); const k=D.karyawan.find(x=>x.nama===d.s); const n=waNum(k?.hp); if(!n){toast('No. HP '+d.s+' belum diisi','bad');return} window.open(`https://wa.me/${n}?text=${encodeURIComponent(kirimSalesTeks(d.s,c))}`,'_blank'); },
   waTagih:d=>{ const c=C(); let l=c.piutang.filter(i=>i.no===d.no); if(!l.length){ l=c.inv.filter(i=>i.no===d.no&&N(i.sisa)>0).map(i=>({...i,jatuh_tempo:i.jatuh_tempo||i.tanggal})); } if(l.length)waTagihModal(l); }, waPel:d=>{ const l=C().piutang.filter(i=>String(i.pelanggan)===String(d.id)&&N(i.sisa)>0).sort((a,b)=>String(a.jatuh_tempo||'').localeCompare(String(b.jatuh_tempo||''))); if(l.length)waTagihModal(l); else toast('Tidak ada tagihan','bad'); },
   newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
   newPengeluaran:()=>formPengeluaran(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
