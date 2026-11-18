@@ -2662,7 +2662,7 @@ function openForm(cfg){
     if(!hasSB()){ if(hint)hint.textContent='Foto nota hanya bisa disimpan saat terhubung ke server.'; el.value=''; return }
     try{ if(hint)hint.textContent='Mengunggah nota…'; const acak=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
       if(f.type==='application/pdf'){ if(f.size>10*1024*1024) throw new Error('PDF maksimal 10 MB'); const path=`nota/${TODAY}/${acak}.pdf`; const {error}=await SB.storage.from('foto').upload(path,f,{contentType:'application/pdf',upsert:false}); if(error) throw error; h.value=path; }
-      else { const blob=await kompres(f,1400,0.8); const path=`nota/${TODAY}/${acak}.jpg`; await unggahFoto(path,blob); h.value=path; }
+      else { if(hint)hint.textContent='Mengecilkan foto…'; const blob=await kompres(f,1200,0.75); const path=`nota/${TODAY}/${acak}.jpg`; if(hint)hint.textContent='Mengunggah nota… ('+Math.round(blob.size/1024)+' KB)'; await Promise.race([unggahFoto(path,blob),new Promise((_,no)=>setTimeout(()=>no(new Error('koneksi lambat, sinyal dicek lalu pilih foto lagi')),40000))]); h.value=path; }
       if(hint)hint.textContent='✓ Nota tersimpan di server'; }
     catch(e){ if(hint)hint.textContent='Gagal unggah foto: '+(e.message||e); el.value=''; h.value=''; }
   }));
