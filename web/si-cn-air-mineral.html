@@ -1991,7 +1991,7 @@ V.penerimaan=()=>{
   return (owMgr?tickerHTML(c):'')+head(sales?'Penagihan':'Penerimaan Kas','Catat uang yang benar-benar diterima. Cicilan/panjar memakai nomor invoice yang sama. Pinjaman dicatat di menu Hutang.',CAN.addPenerimaan()?`<button class="btn pri" data-act="newPenerimaan">+ ${sales?'Catat penagihan':'Catat penerimaan'}</button>`:'')+
   `<div class="filters">${mSel}${selF('j_pn','Jenis',[['','Semua jenis'],...L.jenisPenerimaan])}</div>
   <div class="kpis">${kpi('Total diterima',rp(tot),rows.length+' transaksi','hl')}${Object.entries(by).map(([k,v])=>kpi(k,rp(v))).join('')}</div>`+
-  (owMgr?ringkasanHarianHTML(c):'')+tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Jenis',f:r=>esc(r.jenis)},{h:'Pembayar',f:r=>esc(r.pembayar)},{h:'Metode',f:r=>esc(r.metode)},{h:'Nominal',c:'num',f:r=>`<b>${rp(r.nominal)}</b>`},{h:'Invoice',f:r=>r.ref?`<span class="mono">${esc(r.ref)}</span>`:'–'},{h:'Validasi',f:r=>{if(!r.ref)return r.jenis==='Penagihan piutang'?chip('Tanpa invoice','bad'):'–';const i=c.invByNo[r.ref];if(!i)return chip('Invoice tidak ada','bad');return i.valid==='OK'?chip('Lunas','ok'):i.valid==='LEBIH'?chip('Bayar lebih','bad'):chip('Sisa '+rpS(i.sisa),'warn')}},{h:'Dicatat',f:r=>`<span class="sub">${esc(r.dibuat_oleh||'')}</span>`},{h:'',c:'act',f:r=>actCell('pembayaran',r)}],rows,{empty:'Belum ada penerimaan di periode ini.'});
+  (owMgr?ringkasanHarianHTML(c):'')+tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Jenis',f:r=>esc(r.jenis)},{h:'Pembayar',f:r=>esc(r.pembayar)},{h:'Metode',f:r=>esc(r.metode)+(r.bukti_foto?`<br><button class="btn sm ghost" data-act="lihatNota" data-p="${esc(r.bukti_foto)}">Lihat bukti</button>`:(r.metode==='Transfer'||r.metode==='QRIS')?'<br><span class="sub">belum ada bukti</span>':'')},{h:'Nominal',c:'num',f:r=>`<b>${rp(r.nominal)}</b>`},{h:'Invoice',f:r=>r.ref?`<span class="mono">${esc(r.ref)}</span>`:'–'},{h:'Validasi',f:r=>{if(!r.ref)return r.jenis==='Penagihan piutang'?chip('Tanpa invoice','bad'):'–';const i=c.invByNo[r.ref];if(!i)return chip('Invoice tidak ada','bad');return i.valid==='OK'?chip('Lunas','ok'):i.valid==='LEBIH'?chip('Bayar lebih','bad'):chip('Sisa '+rpS(i.sisa),'warn')}},{h:'Dicatat',f:r=>`<span class="sub">${esc(r.dibuat_oleh||'')}</span>`},{h:'',c:'act',f:r=>actCell('pembayaran',r)}],rows,{empty:'Belum ada penerimaan di periode ini.'});
 };
 
 // ---- Tagihan via WhatsApp (kirim manual) + tautan pembayaran Midtrans per invoice ----
@@ -2761,8 +2761,9 @@ function formPenerimaan(rec,preNo){
   openForm({title:edit?'Ubah penerimaan':sales?'Catat penagihan':'Catat penerimaan',values:edit?rec:{tanggal:TODAY,jenis:pre?(pre.jenis==='Tunai'?'Penjualan tunai':'Penagihan piutang'):'Penagihan piutang',metode:'Tunai',akun:c.S.akun[0],ref:preNo||'',pembayar:pre?.pelNama||'',nominal:pre?pre.sisa:''},
     fields:[{k:'tanggal',label:'Tanggal terima',type:'date',req:1},{k:'jenis',label:'Jenis penerimaan',type:'select',options:jenis,ph:false,req:1,hint:'Panjar dan pelunasan sama-sama “Penagihan piutang”. Pinjaman dicatat di menu Hutang.'},
       {k:'ref',label:'Nomor invoice',type:'select',options:invList(),full:1},{k:'pembayar',label:'Pelanggan / pembayar',type:'text',req:1},{k:'nominal',label:'Nominal diterima (Rp)',type:'money',req:1},
-      {k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Masuk ke'),{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1}],
+      {k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Masuk ke'),{k:'bukti_foto',label:'Bukti transfer / QRIS (foto atau PDF)',type:'upload',full:1,hidden:true,hint:'Wajib untuk Transfer dan QRIS.'},{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1}],
     onChange(v,api,ch){ const needRef=v.jenis==='Penagihan piutang'||v.jenis==='Penjualan tunai'; api.show('ref',needRef);
+      api.show('bukti_foto',v.metode==='Transfer'||v.metode==='QRIS');
       if(ch==='metode')api.set('akun',akDef(v.metode));
       const i=c.invByNo[v.ref]; if(ch==='ref'&&i){api.set('pembayar',i.pelNama);api.set('nominal',i.sisa)}
       const sisa=i?i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0):null;
@@ -2770,7 +2771,9 @@ function formPenerimaan(rec,preNo){
     async onSubmit(v){ const needRef=v.jenis==='Penagihan piutang'||v.jenis==='Penjualan tunai'; if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.';
       if(needRef&&!v.ref)return 'Pilih nomor invoice agar piutang berkurang.';
       const i=c.invByNo[v.ref]; if(needRef&&i){const sisa=i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0);if(N(v.nominal)>sisa)return `Nominal melebihi sisa tagihan (${rp(sisa)}).`}
-      await put('pembayaran',stamp({id:rec?.id,tanggal:v.tanggal,jenis:v.jenis,pembayar:v.pembayar,metode:v.metode,akun:v.akun,nominal:N(v.nominal),ref:needRef?v.ref:'',catatan:v.catatan},rec)); },okMsg:'Penerimaan tersimpan'});
+      const butuhBukti=v.metode==='Transfer'||v.metode==='QRIS';
+      if(butuhBukti&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS.';
+      await put('pembayaran',stamp({id:rec?.id,tanggal:v.tanggal,jenis:v.jenis,pembayar:v.pembayar,metode:v.metode,akun:v.akun,nominal:N(v.nominal),ref:needRef?v.ref:'',catatan:v.catatan,bukti_foto:butuhBukti?(v.bukti_foto||''):''},rec)); },okMsg:'Penerimaan tersimpan'});
 }
 function formPelanggan(rec){
   const c=C(); const wl=[...D.wilayah].sort((a,b)=>(a.zona||'').localeCompare(b.zona||'')||String(a.nama).localeCompare(b.nama)).map(w=>[w.id,w.nama+' ('+w.zona+')']);
