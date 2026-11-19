@@ -2780,6 +2780,8 @@ function confirmBox(msg,okLabel,fn,{danger=true,typeWord=null}={}){
 let toastT=null; function toast(m,k=''){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t)}t.className='toast '+k;t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
 
 /* ---------- form per modul ---------- */
+const pelKetik=()=>{const el=document.getElementById('f_pelanggan_t');return el?String(el.value).trim():''};
+const pelCocok=t=>{const u=String(t||'').trim().toUpperCase();return u?D.pelanggan.filter(p=>String(p.nama||'').trim().toUpperCase()===u):[]};
 const pelOpts=()=>{const c=C();let ps=[...D.pelanggan];if(ME.role==='sales')ps.sort((a,b)=>(b.sales===meName())-(a.sales===meName())||String(a.nama).localeCompare(b.nama));else ps.sort((a,b)=>String(a.nama).localeCompare(b.nama));return ps.map(p=>[p.id,p.nama+' — '+(c.wil[p.wilayah]?.nama||'tanpa wilayah')+(c.wil[p.wilayah]?.zona?' ('+c.wil[p.wilayah].zona+')':'')])};
 
 const akunF=(k,label)=>{const ak=[...C().S.akun]; if(!ak.includes('Midtrans'))ak.push('Midtrans'); return {k,label,type:'select',options:ak,ph:false,def:C().S.akun[0]};};
@@ -2805,7 +2807,7 @@ function formPenjualan(rec){
       {k:'gudang_info',type:'html',full:1},
       {k:'muatan_id',label:'Kendaraan (muatan)',type:'select',options:muatOpts(),ph:'— pilih muatan —',full:1,req:0},
       {k:'jenis',label:'Jenis penjualan',type:'select',options:['Kredit','Tunai'],ph:false,req:1},
-      {k:'pelanggan',label:'Toko / pelanggan',type:'search',options:pelOpts(),ph:'Ketik nama toko, kosongkan untuk tunai umum',full:1},
+      {k:'pelanggan',label:'Toko / pelanggan',type:'search',options:pelOpts(),ph:'Ketik nama pelanggan. Kosongkan = tunai umum',full:1},
       {k:'dus',label:'Jumlah dus',type:'number',step:1,req:1},{k:'harga',label:'Harga / dus (Rp)',type:'money',req:1},
       {k:'bonus',label:'Bonus (dus)',type:'number',step:1},{k:'diskon',label:'Diskon (Rp)',type:'money'},{k:'retur',label:'Retur (dus)',type:'number',step:1},
       {k:'jatuh_tempo',label:'Jatuh tempo',type:'date'},{k:'catatan',label:'Catatan',type:'text',full:1},
@@ -2820,7 +2822,8 @@ function formPenjualan(rec){
       if(['pelanggan','jenis','tanggal'].includes(ch)&&h!=null){api.set('harga',h);v.harga=h}
       if(['pelanggan','dus','jenis'].includes(ch)&&w&&N(w.bonus_per)>0&&(p||v.jenis==='Tunai')){const bn=Math.floor(N(v.dus)/N(w.bonus_per));api.set('bonus',bn);v.bonus=bn}
       if(['pelanggan','jenis','tanggal'].includes(ch)||(ch==='init'&&!edit)){const jt=v.jenis==='Kredit'&&v.tanggal?addDays(v.tanggal,N(w?.termin??c.S.termin_default)||30):'';api.set('jatuh_tempo',jt);v.jatuh_tempo=jt}
-      api.hint('pelanggan',v.jenis==='Kredit'&&!v.pelanggan?'<span class="warnt">Penjualan kredit wajib memilih toko.</span>':!v.pelanggan?'Tunai umum: cukup isi jumlah dus, seperti catatan “WAHYU 350 dus”.':'Toko baru? Tambahkan di menu Pelanggan.');
+      const ptx=pelKetik(); const pBaru=!v.pelanggan&&ptx?(pelCocok(ptx).length?'':ptx):'';
+      api.hint('pelanggan',pBaru?`<span class="okt">Pelanggan baru <b>${esc(pBaru.toUpperCase())}</b> akan disimpan otomatis saat penjualan disimpan.</span>`:(!v.pelanggan&&ptx&&pelCocok(ptx).length)?'Nama ini sudah ada di daftar pelanggan dan akan dipakai.':v.jenis==='Kredit'&&!v.pelanggan?'<span class="warnt">Penjualan kredit wajib ada nama pelanggan.</span>':!v.pelanggan?'Tunai umum: kosongkan nama kalau pembeli tidak mau disebut.':'');
       api.hint('harga',!w?'':h==null?'<span class="warnt">Belum ada daftar harga untuk wilayah & jenis ini.</span>':`Daftar harga ${esc(w.nama)} (${v.jenis}): <b>${rp(h)}</b>`+(N(v.harga)&&N(v.harga)!==h?' · <span class="warnt">berbeda dari daftar harga</span>':''));
       api.hint('bonus',w&&N(w.bonus_per)?`Aturan wilayah: 1 dus tiap ${w.bonus_per} dus`:'');
       api.hint('jatuh_tempo',v.jenis==='Kredit'?`Tempo ${N(w?.termin??c.S.termin_default)||30} hari`:'');
@@ -2836,12 +2839,16 @@ function formPenjualan(rec){
     async onSubmit(v){
       let muatanId=''; const dariGudang=(!sales||izinGudang(meName()))&&!!v.dari_gudang; const lama=edit&&!rec.muatan_id&&!v.muatan_id;
       if(!dariGudang&&!lama){ const mu=muatById(v.muatan_id); if(!mu)return sales?'Pilih kendaraan (muatan) dulu.':'Pilih muatan, atau centang ambil langsung dari gudang.'; const sisa=sisaMuatan(mu.id, edit?rec.no:null); if(N(v.dus)+N(v.bonus)>sisa)return `Di mobil hanya ada ${sisa} dus yang belum dijual.`; muatanId=mu.id; }
-      if(v.jenis==='Kredit'&&!v.pelanggan)return 'Penjualan kredit wajib memilih toko.';
+      const ptx=pelKetik();
+      if(v.jenis==='Kredit'&&!v.pelanggan&&!ptx)return 'Penjualan kredit wajib ada nama pelanggan.';
+      if(!v.pelanggan&&ptx&&pelCocok(ptx).length>1)return `Ada beberapa pelanggan bernama ${ptx.toUpperCase()}. Pilih salah satu dari daftar.`;
       if(N(v.dus)<=0)return 'Jumlah dus harus lebih dari 0.'; if(N(v.harga)<=0)return 'Harga per dus wajib diisi.'; if(N(v.retur)>N(v.dus))return 'Retur tidak boleh melebihi dus terjual.';
       if(v.jenis==='Kredit'&&!v.jatuh_tempo)return 'Penjualan kredit wajib punya jatuh tempo.';
-      const p=c.pel[v.pelanggan]; const no=edit?rec.no:nextInvoice(v.tanggal);
-      const r=stamp({dari_gudang:dariGudang,muatan_id:muatanId||rec?.muatan_id||'',id:edit?rec.id:'pj-'+no,no,tanggal:v.tanggal,sales:v.sales,pelanggan:v.pelanggan||'',pelanggan_nama:p?.nama||(v.pelanggan?'':'Tunai umum'),jenis:v.jenis,dus:N(v.dus),bonus:N(v.bonus),harga:N(v.harga),diskon:N(v.diskon),retur:N(v.retur),jatuh_tempo:v.jenis==='Kredit'?v.jatuh_tempo:'',catatan:v.catatan},edit?rec:null);
+      const no=edit?rec.no:nextInvoice(v.tanggal);
       if(!edit&&D.penjualan.some(x=>x.no===no))return 'Nomor invoice bentrok, coba simpan lagi.';
+      if(!v.pelanggan&&ptx){ const m=pelCocok(ptx); if(m.length===1)v.pelanggan=m[0].id; else { v.pelanggan=await put('pelanggan',{id:'pl-'+genId(),nama:ptx.toUpperCase(),wilayah:'',sales:v.sales,alamat:'',hp:'',catatan:'Dibuat otomatis dari penjualan '+no,dibuat_oleh:meName(),dibuat_pada:nowStamp()}); } }
+      const p=c.pel[v.pelanggan]||D.pelanggan.find(x=>x.id===v.pelanggan);
+      const r=stamp({dari_gudang:dariGudang,muatan_id:muatanId||rec?.muatan_id||'',id:edit?rec.id:'pj-'+no,no,tanggal:v.tanggal,sales:v.sales,pelanggan:v.pelanggan||'',pelanggan_nama:p?.nama||(v.pelanggan?'':'Tunai umum'),jenis:v.jenis,dus:N(v.dus),bonus:N(v.bonus),harga:N(v.harga),diskon:N(v.diskon),retur:N(v.retur),jatuh_tempo:v.jenis==='Kredit'?v.jatuh_tempo:'',catatan:v.catatan},edit?rec:null);
       await put('penjualan',r);
       if(!edit&&v.jenis==='Tunai'&&v.terima){const bersih=N(v.dus)*N(v.harga)-N(v.diskon)-N(v.retur)*N(v.harga);await put('pembayaran',stamp({tanggal:v.tanggal,jenis:'Penjualan tunai',pembayar:p?.nama||('Tunai '+v.sales),metode:v.metode||'Tunai',akun:akDef(v.metode),nominal:bersih,ref:no,catatan:'otomatis dari penjualan'}))}
       if(!edit)setTimeout(()=>showNota(no),80);
