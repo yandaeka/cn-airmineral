@@ -867,7 +867,7 @@ function compute(){
   D.bayar_hutang.forEach(b=>led.push({tanggal:b.tanggal,akun:akOf(b,b.metode),kind:'hutang',sumber:'Bayar hutang',ket:b.id_utang+' · '+(utangByKode[b.id_utang]?.nama||''),masuk:0,keluar:N(b.pokok)+N(b.bunga)+N(b.biaya)}));
   sup.forEach(x=>{if(x.cara==='Tunai')led.push({tanggal:x.tanggal,akun:akOf(x),kind:'beli',sumber:'Pembelian tunai',ket:x.kreNama+' · '+x.no,masuk:0,keluar:x.total})});
   D.gaji.forEach(g=>{if(g.status==='Dibayar')led.push({tanggal:g.tanggal_bayar||g.tanggal,akun:akOf(g),kind:'gaji',sumber:'Gaji',ket:g.nama||'',masuk:0,keluar:gajiBersih(g)})});
-  D.transfer.forEach(t=>{const ket=`${t.dari} → ${t.ke}`+(t.catatan?' · '+t.catatan:'');led.push({tanggal:t.tanggal,akun:t.dari,kind:'trfOut',sumber:'Setor/transfer',ket,masuk:0,keluar:N(t.nominal),tid:t.id});led.push({tanggal:t.tanggal,akun:t.ke,kind:'trfIn',sumber:'Setor/transfer',ket,masuk:N(t.nominal),keluar:0,tid:t.id})});
+  D.transfer.forEach(t=>{const ket=`${t.dari} → ${t.ke}`+(t.catatan?' · '+t.catatan:'');led.push({tanggal:t.tanggal,akun:t.dari,kind:'trfOut',sumber:'Setor/transfer',ket,masuk:0,keluar:N(t.nominal),tid:t.id,buktiSetoran:t.bukti_foto});led.push({tanggal:t.tanggal,akun:t.ke,kind:'trfIn',sumber:'Setor/transfer',ket,masuk:N(t.nominal),keluar:0,tid:t.id,buktiSetoran:t.bukti_foto})});
   led.sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')||b.masuk-a.masuk);
   const saldoAwal={}; AK.forEach((a,i)=>saldoAwal[a]=i===0?N(S.saldo_awal_kas):N(S.saldo_awal_akun?.[a]));
   const sal={...saldoAwal}; let tot=AK.reduce((x,a)=>x+saldoAwal[a],0); const ledger=[]; let kasMin=null;
@@ -2257,7 +2257,7 @@ V.kas=()=>{
     const awal=before.length?(ak?before[before.length-1].saldoAkun:before[before.length-1].saldo):sa;
     const masuk=rows.reduce((a,r)=>a+r.masuk,0), keluar=rows.reduce((a,r)=>a+r.keluar,0);
     body=`<div class="filters">${mSel}${selF('a_ks','Akun',[['','Semua akun'],...AK])}</div><div class="kpis">${kpi('Saldo awal bulan',rp(awal))}${kpi('Masuk',rp(masuk))}${kpi('Keluar',rp(keluar))}${kpi('Saldo akhir',rp(awal+masuk-keluar),ak||'semua akun',awal+masuk-keluar<0?'bad':'')}</div>`+
-    tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Akun',f:r=>esc(r.akun)},{h:'Sumber',f:r=>esc(r.sumber)},{h:'Keterangan',f:r=>esc(r.ket)},{h:'Masuk',c:'num',f:r=>r.masuk?`<span class="okt">${rp(r.masuk)}</span>`:''},{h:'Keluar',c:'num',f:r=>r.keluar?rp(r.keluar):''},{h:'Saldo',c:'num',f:r=>{const v=ak?r.saldoAkun:r.saldo;return v<0?`<span class="badt">${rp(v)}</span>`:rp(v)}},{h:'',c:'act',f:r=>r.tid&&r.kind==='trfOut'&&isOwner()?`<button class="btn sm ghost danger" data-act="del" data-col="transfer" data-id="${r.tid}">Hapus</button>`:''}],rows,{empty:'Tidak ada pergerakan di bulan ini.',foot:['','','','Total',rp(masuk),rp(keluar),'','']});
+    tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Akun',f:r=>esc(r.akun)},{h:'Sumber',f:r=>esc(r.sumber)},{h:'Keterangan',f:r=>esc(r.ket)},{h:'Masuk',c:'num',f:r=>r.masuk?`<span class="okt">${rp(r.masuk)}</span>`:''},{h:'Keluar',c:'num',f:r=>r.keluar?rp(r.keluar):''},{h:'Saldo',c:'num',f:r=>{const v=ak?r.saldoAkun:r.saldo;return v<0?`<span class="badt">${rp(v)}</span>`:rp(v)}},{h:'Bukti setor',f:r=>r.buktiSetoran?`<button class="btn sm" data-act="lihatBuktiSetoran" data-p="${esc(r.buktiSetoran)}">Lihat bukti</button>`:''},{h:'',c:'act',f:r=>r.tid&&r.kind==='trfOut'&&isOwner()?`<button class="btn sm ghost danger" data-act="del" data-col="transfer" data-id="${r.tid}">Hapus</button>`:''}],rows,{empty:'Tidak ada pergerakan di bulan ini.',foot:['','','','Total',rp(masuk),rp(keluar),'','','']});
   } else {
     const k0=AK[0]; const days={};
     c.ledger.forEach(r=>{if(r.akun!==k0||!inM(r.tanggal,m))return;const d=(days[r.tanggal]??={tunai:0,kredit:0,lain:0,setor:0,keluar:0,saldo:0});if(r.kind==='tunai')d.tunai+=r.masuk;else if(r.kind==='kredit')d.kredit+=r.masuk;else if(r.masuk)d.lain+=r.masuk;if(r.kind==='trfOut')d.setor+=r.keluar;else d.keluar+=r.keluar;d.saldo=r.saldoAkun});
@@ -2796,7 +2796,7 @@ function fieldHTML(f,v){
   return `<div class="field ${f.full?'full':''}" data-k="${f.k}" ${f.hidden?'hidden':''}>${f.type==='check'?'':`<label for="${id}">${esc(f.label)}${f.req?' <b class="req">*</b>':''}</label>`}${inp}<div class="hint" id="h_${f.k}">${f.hint||''}</div></div>`;
 }
 let MODAL=null;
-function closeModal(){ faceStop(); $('#modal-root').innerHTML=''; MODAL=null; }
+function closeModal(){ if($('#mform[data-saving]'))return; faceStop(); $('#modal-root').innerHTML=''; MODAL=null; }
 function openModal(html,{wide=false,xwide=false}={}){ $('#modal-root').innerHTML=`<div class="mback" data-mback><div class="modal ${xwide?'xwide':wide?'wide':''}" role="dialog" aria-modal="true">${html}</div></div>`; }
 function openForm(cfg){
   const {title,fields,values={},onSubmit,onChange,submitLabel='Simpan',wide}=cfg;
@@ -2824,8 +2824,9 @@ function openForm(cfg){
   let swX=null,swBox=null; form.addEventListener('touchstart',e=>{swBox=e.target.closest('.seg-fill');swX=swBox?e.touches[0].clientX:null},{passive:true});
   form.addEventListener('touchend',e=>{if(swX==null||!swBox)return;const dx=e.changedTouches[0].clientX-swX;swX=null;if(Math.abs(dx)<40)return;const bs=[...swBox.querySelectorAll('[data-segv]')];const i=bs.findIndex(b=>b.classList.contains('on'));const j=Math.min(bs.length-1,Math.max(0,(i<0?0:i)+(dx<0?1:-1)));if(j!==i)bs[j].click()},{passive:true});
   form.addEventListener('submit',async e=>{e.preventDefault();const v=vals();const miss=fields.filter(f=>f.req&&!form.querySelector(`.field[data-k="${f.k}"]`)?.hidden&&(v[f.k]===''||v[f.k]==null));if(miss.length){$('#ferr').textContent='Lengkapi: '+miss.map(f=>f.label).join(', ');return}
-    const btn=$('#fsub');btn.disabled=true;$('#ferr').textContent='';
-    try{const r=await onSubmit(v,api);if(typeof r==='string'){$('#ferr').textContent=r;btn.disabled=false;return}closeModal();toast(cfg.okMsg||'Tersimpan')}catch(err){console.error(err);$('#ferr').textContent=errMsg(err);btn.disabled=false}});
+    const btn=$('#fsub');if(btn.disabled)return;btn.disabled=true;$('#ferr').textContent='';
+    if(cfg.lockOnSubmit)form.dataset.saving='';
+    try{const r=await onSubmit(v,api);if(typeof r==='string'){$('#ferr').textContent=r;btn.disabled=false;return}delete form.dataset.saving;closeModal();toast(cfg.okMsg||'Tersimpan')}catch(err){console.error(err);$('#ferr').textContent=errMsg(err);btn.disabled=false}finally{delete form.dataset.saving}});
   fire('init');
   setTimeout(()=>{const first=form.querySelector('input:not([type=checkbox]):not([disabled]),select:not([disabled])');first&&first.focus()},30);
 }
@@ -3026,7 +3027,92 @@ function formPemakaian(rec,preTgl){
       const old=D.pemakaian.find(p=>p.tanggal===v.tanggal); if(rec&&rec.tanggal!==v.tanggal)await del('pemakaian',rec.id);
       await put('pemakaian',stamp({id:'pk-'+v.tanggal,tanggal:v.tanggal,items,catatan:v.catatan},old)); },okMsg:'Catatan bahan tersimpan'});
 }
-function formTransfer(rec){ const AK=C().S.akun; openForm({title:rec?'Ubah setoran':'Setor / transfer antar akun',values:rec||{tanggal:TODAY,dari:AK[0],ke:AK[1]||AK[0]},fields:[{k:'tanggal',label:'Tanggal',type:'date',req:1},{k:'nominal',label:'Nominal (Rp)',type:'money',req:1},{k:'dari',label:'Dari',type:'select',options:AK,ph:false},{k:'ke',label:'Ke',type:'select',options:AK,ph:false},{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1,ph:'mis. setor tunai ke BSI'}],async onSubmit(v){if(v.dari===v.ke)return 'Akun asal dan tujuan harus berbeda.';if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.';await put('transfer',stamp({id:rec?.id,...v,nominal:N(v.nominal)},rec))},okMsg:'Setoran tercatat'}); }
+const BUKTI_SETOR_BUCKET='bukti-setoran';
+const BUKTI_SETOR_MAX=10*1024*1024;
+
+async function bukaBuktiSetoran(path){
+  if(!hasSB())return toast('Bukti setoran perlu koneksi ke server.','warn');
+  try{
+    const {data,error}=await SB.storage.from(BUKTI_SETOR_BUCKET).createSignedUrl(path,300);
+    if(error)throw error;
+    openModal(`<div class="mh"><h3>Bukti setoran</h3><button class="btn sm ghost" data-act="close" aria-label="Tutup">✕</button></div>
+      <div class="mb">${path.endsWith('.jpg')?`<img class="full" src="${esc(data.signedUrl)}" alt="Bukti setoran" style="max-width:100%;max-height:60vh;margin:auto">`:''}
+      <a class="btn full" href="${esc(data.signedUrl)}" target="_blank" rel="noopener noreferrer">Buka ${path.endsWith('.pdf')?'PDF':'foto'}</a></div>`);
+  }catch(e){toast('Bukti setoran tidak bisa dibuka: '+sbErr(e),'bad')}
+}
+
+function formTransfer(rec){
+  const AK=C().S.akun;
+  const id=rec?.id||genId();
+  const isSetoran=v=>v.dari===AK[0]&&!!v.ke&&v.ke!==AK[0];
+  let file=null, uploadedPath='';
+  openForm({
+    title:rec?'Ubah setoran':'Setor / transfer antar akun',
+    values:rec||{tanggal:TODAY,dari:AK[0],ke:AK[1]||AK[0]},
+    lockOnSubmit:true,
+    fields:[
+      {k:'tanggal',label:'Tanggal',type:'date',req:1},
+      {k:'nominal',label:'Nominal (Rp)',type:'money',req:1},
+      {k:'dari',label:'Dari',type:'select',options:AK,ph:false},
+      {k:'ke',label:'Ke',type:'select',options:AK,ph:false},
+      {k:'catatan',label:'Catatan / no. bukti',type:'text',full:1,ph:'mis. setor tunai ke BSI'},
+      {k:'bukti_setoran',type:'html',html:`<div class="field">
+        <label for="bukti-setor-file">Bukti setoran (PDF atau foto) <b class="req">*</b></label>
+        <input id="bukti-setor-file" type="file" accept="application/pdf,.pdf,image/*">
+        <input id="bukti-setor-camera" type="file" accept="image/*" capture="environment" hidden>
+        <div><button id="bukti-setor-ambil" type="button" class="btn sm">Ambil foto</button></div>
+        <small id="bukti-setor-status" class="hint" role="status">${rec?.bukti_foto?'Bukti sebelumnya tersimpan.':'PDF maksimal 10 MB.'}</small>
+      </div>`}
+    ],
+    onChange(v){ $('#f_bukti_setoran').hidden=!isSetoran(v); },
+    async onSubmit(v){
+      if(!AK.includes(v.dari)||!AK.includes(v.ke)||v.dari===v.ke)return 'Pilih akun asal dan tujuan yang berbeda.';
+      if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.';
+      let bukti_foto='';
+      if(isSetoran(v)){
+        if(!file&&!rec?.bukti_foto)return 'Lampirkan PDF atau foto bukti setoran.';
+        bukti_foto=rec?.bukti_foto||'';
+        if(file){
+          if(!hasSB()||!navigator.onLine)return 'Hubungkan perangkat ke internet untuk mengunggah bukti.';
+          if(!uploadedPath){
+            const pdf=file.type==='application/pdf'||(!file.type&&/\.pdf$/i.test(file.name));
+            if(pdf&&file.size>BUKTI_SETOR_MAX)return 'PDF maksimal 10 MB.';
+            if(!pdf&&!file.type.startsWith('image/'))return 'Pilih file PDF atau foto.';
+            const status=$('#bukti-setor-status');
+            status.textContent='Mengunggah bukti setoran…';
+            try{
+              const blob=pdf?file:await kompres(file,1600,0.85);
+              const path=`${id}/${genId()}.${pdf?'pdf':'jpg'}`;
+              const {error}=await SB.storage.from(BUKTI_SETOR_BUCKET).upload(path,blob,{
+                contentType:pdf?'application/pdf':'image/jpeg',upsert:false
+              });
+              if(error)throw error;
+              uploadedPath=path;
+              status.textContent='Bukti sudah diunggah.';
+            }catch(e){
+              status.textContent='Unggah gagal. Coba simpan kembali.';
+              throw e;
+            }
+          }
+          bukti_foto=uploadedPath;
+        }
+      }
+      await put('transfer',stamp({id,...v,nominal:N(v.nominal),bukti_foto},rec));
+    },
+    okMsg:'Setoran tercatat'
+  });
+  const picker=$('#bukti-setor-file'), camera=$('#bukti-setor-camera');
+  $('#bukti-setor-ambil').onclick=()=>camera.click();
+  for(const input of [picker,camera]){
+    input.onchange=()=>{
+      if(!input.files[0]||$('#fsub').disabled)return;
+      file=input.files[0];
+      uploadedPath='';
+      if(input===camera)picker.value='';
+      $('#bukti-setor-status').textContent='Dipilih: '+file.name;
+    };
+  }
+}
 function formPembelian(rec){
   const c=C(); const sup=D.kreditur.filter(k=>/supplier/i.test(k.jenis||'')).map(k=>[k.id,k.nama]);
   const vals=rec?{...rec}:{tanggal:TODAY,cara:'Kredit'}; c.bahan.forEach(b=>{const it=rec?.items?.find(i=>i.bahan===b.id);vals['q_'+b.id]=it?.qty??'';vals['hg_'+b.id]=it?.harga??Math.round(c.hargaBahan(b.id)*100)/100});
@@ -3372,7 +3458,7 @@ const ACT={
     if(extra){openModal(`<div class="mh"><h3>Tidak bisa dihapus</h3><button class="btn sm ghost" data-act="close">✕</button></div><div class="mb"><div class="full">${extra}</div></div><div class="mf"><button class="btn" data-act="close">Tutup</button></div>`);return}
     confirmBox(`<p>Hapus data ini? Tindakan ini tidak bisa dibatalkan.</p>`,'Hapus',async()=>{await del(d.col,d.id);toast('Data dihapus')})},
   bayarGaji:async d=>{const g=D.gaji.find(x=>x.id===d.id);if(!g)return;try{await put('gaji',{...g,status:'Dibayar',tanggal_bayar:TODAY,diubah_oleh:meName(),diubah_pada:nowStamp()});toast('Gaji ditandai dibayar')}catch(e){toast(errMsg(e),'bad')}},
-  gajiMassal:()=>formGajiBulanan(), newTransfer:()=>formTransfer(),
+  gajiMassal:()=>formGajiBulanan(), newTransfer:()=>formTransfer(), lihatBuktiSetoran:d=>bukaBuktiSetoran(d.p),
   cetak:()=>{try{
     const laporan=!!document.querySelector('.rh');   // laporan bulanan punya format cetaknya sendiri
     if(!laporan) document.body.classList.add('print-data');
