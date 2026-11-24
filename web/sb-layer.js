@@ -1,4 +1,4 @@
-const APP_VER = '3.00 · 19 Nov 2026';
+const APP_VER = '3.01 · 24 Nov 2026';
 /* =========================================================
    LAPISAN SUPABASE — login per pengguna, sinkron realtime,
    simpan offline (antrean) & cache lokal per pengguna

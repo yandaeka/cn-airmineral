@@ -990,7 +990,7 @@ const NGRP={
 };
 const BNAV={
   owner:[['dashboard','Beranda','home'],['g:Penjualan','Penjualan','jual'],['g:Keuangan','Keuangan','bank'],['more','Menu','grid']],
-  manager:[['g:Pabrik','Pabrik','lab'],['g:Gudang','Gudang','box'],['g:Penjualan','Penjualan','jual'],['more','Lainnya','grid']],
+  manager:[['g:Pabrik','Pabrik','lab'],['g:Gudang','Gudang','box'],['g:Penjualan','Penjualan','jual'],['karyawan','Tim','tim'],['more','Lainnya','grid']],
   sales:[['beranda','Beranda','home'],['pelanggan','Pelanggan','tim'],['piutang','Piutang','receipt'],['more','Lainnya','grid']],
   gudang:[['muatan','Muatan','truck'],['stok','Stok','box'],['pembelian','Bahan','receipt'],['more','Lainnya','grid']],
   produksi:[['produksi','Produksi','lab'],['label','Label','tag'],['sanitasi','Sanitasi','shield'],['more','Lainnya','grid']],
@@ -1502,7 +1502,7 @@ V.absensi=()=>{
     const mSel=monthSel('m_abr',D.absensi.map(a=>a.tanggal)); const rows=[...D.absensi].filter(a=>inM(a.tanggal,F.m_abr)).sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')||String(a.nama).localeCompare(b.nama));
     body=`<div class="filters">${mSel}</div>`+tbl([{h:'Tanggal',f:a=>tgl(a.tanggal)},{h:'Karyawan',f:a=>esc(a.nama)},{h:'Status',f:a=>a.status==='Hadir'?chip('Hadir','ok'):chip(a.status,'warn')},{h:'Masuk',f:a=>esc(a.masuk||'–')+`<span class="sub">${mapLink(a.lokasi_masuk)}${fotoBtn(a.foto_masuk)}${a.wajah_masuk?' · wajah ✓':''}</span>`},{h:'Pulang',f:a=>esc(a.pulang||'–')+`<span class="sub">${mapLink(a.lokasi_pulang)}${fotoBtn(a.foto_pulang)}</span>`},{h:'Catatan',f:a=>esc(a.catatan||'')},{h:'',c:'act',f:a=>actCell('absensi',a)}],rows,{empty:'Belum ada absensi.'});
   }
-  return head('Absensi','Absen masuk dan pulang dengan selfie. Bisa dari HP masing-masing atau satu HP/tablet bersama di area kerja.')+tabsH+body;
+  return head('Absensi','Absen masuk dan pulang dengan selfie. Bisa dari HP masing-masing atau satu HP/tablet bersama di area kerja.',ME.role==='manager'?`<button class="btn pri" data-act="newKaryawan">+ Karyawan</button>`:'')+tabsH+body;
 };
 
 /* =========================================================
