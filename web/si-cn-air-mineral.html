@@ -964,7 +964,7 @@ const NAV={
   sales:[['beranda','Beranda'],['muatan','Muatan Kendaraan'],['penjualan','Penjualan'],['telusur','Penelusuran Dus'],['penerimaan','Penagihan'],['piutang','Piutang Saya'],['pelanggan','Pelanggan'],['absensi','Absen']],
   gudang:[['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['penjualan','Barang Keluar'],['absensi','Absensi']],
   produksi:[['produksi','Produksi'],['label','Cetak Label Dus'],['telusur','Penelusuran Dus'],['sanitasi','Sanitasi'],['peralatan','Peralatan'],['perawatan','Perawatan'],['absensi','Absensi'],['bahan','Bahan Baku']],
-  manager:[['produksi','Produksi'],['#','Gudang'],['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['hpp','HPP & Laba'],['#','Lainnya'],['live','Papan Live'],['absensi','Absensi']],
+  manager:[['produksi','Produksi'],['#','Gudang'],['muatan','Muatan'],['cocok','Barang Keluar Harian'],['telusur','Penelusuran Dus'],['stok','Stok Barang Jadi'],['catatan','Catatan SJPH'],['pembelian','Penerimaan Bahan'],['bahan','Stok Bahan Baku'],['#','Penjualan'],['penjualan','Penjualan'],['penerimaan','Penerimaan Kas'],['piutang','Piutang'],['#','Keuangan'],['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['hpp','HPP & Laba'],['#','Tim'],['absensi','Absensi'],['karyawan','Karyawan'],['#','Lainnya'],['live','Papan Live']],
   lab:[['uji','Uji QC'],['absensi','Absensi']],
   freelance:[['absensi','Absensi']],
   driver:[['muatan','Muatan Saya'],['absensi','Absensi']]
@@ -984,7 +984,8 @@ const NGRP={
     {l:'Gudang',ic:'box',r:[['muatan','Muatan'],['cocok','Barang keluar harian'],['stok','Stok barang jadi'],['bahan','Stok bahan baku'],['pembelian','Penerimaan bahan'],['telusur','Telusur dus']]},
     {l:'Penjualan',ic:'jual',r:[['penjualan','Invoice'],['penerimaan','Penerimaan'],['piutang','Piutang']]},
     {l:'Keuangan',ic:'bank',r:[['pengeluaran','Pengeluaran'],['kas','Kas & Bank'],['hutang','Hutang'],['hpp','HPP & Laba']]},
-    {l:'Lainnya',ic:'grid',r:[['live','Papan Live'],['absensi','Absensi']]}
+    {l:'Tim',ic:'tim',r:[['absensi','Absensi'],['karyawan','Karyawan']]},
+    {l:'Lainnya',ic:'grid',r:[['live','Papan Live']]}
   ]
 };
 const BNAV={
@@ -2754,6 +2755,18 @@ V.validasi=()=>{
   `<div class="kpis">${kpi('Kesalahan / risiko',nb,'',nb?'bad':'')}${kpi('Perlu diperiksa',nw,'',nw?'warn':'')}</div><div class="alerts">${list.map(alertHTML).join('')}</div>`;
 };
 
+V.karyawan=()=>{
+  if(ME?.role!=='manager')return '';
+  const rows=[...D.karyawan].sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'));
+  return head('Karyawan','Daftar karyawan pabrik.',`<button class="btn pri" data-act="newKaryawan">+ Karyawan</button>`)+
+    tbl([
+      {h:'Nama',f:k=>esc(k.nama)},
+      {h:'Jabatan',f:k=>esc(k.jabatan)},
+      {h:'Status kepegawaian',f:k=>esc(k.status_kerja||'–')},
+      {h:'Status kerja',f:k=>k.aktif===false?'Nonaktif':'Aktif'}
+    ],rows,{empty:'Belum ada data karyawan.'});
+};
+
 V.master=()=>{
   const c=C(); const t=curTab('master','pengaturan'); let body='';
   if(t==='pengaturan'){ const S=c.S; body=`<div class="card" style="max-width:640px"><h2>Pengaturan umum <small><button class="btn sm" data-act="gantiPw">Ganti password owner</button> <button class="btn sm" data-act="editPengaturan">Ubah</button></small></h2><div class="pl">${[['Nama usaha',esc(S.nama_usaha)],['Tanggal mulai buku kas',tgl(S.tgl_mulai_kas)],['Saldo awal kas',rp(S.saldo_awal_kas)],['Tanggal saldo awal stok',tgl(S.tgl_stok_awal)],['Stok awal barang jadi',nf(S.stok_awal_jadi,0)+' dus'],['Target produksi harian',nf(S.target_harian,0)+' dus'],['Tempo kredit default',nf(S.termin_default,0)+' hari'],['Akun kas & bank',esc(S.akun.join(', '))],...S.akun.slice(1).map(a=>['Saldo awal '+esc(a),rp(S.saldo_awal_akun?.[a])]),['Pemakaian bahan',S.bahan_otomatis!==false?'Otomatis dari produksi × resep':'Dicatat manual']].map(([a,b])=>`<div class="row"><span>${a}</span><b>${b}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Saldo awal kas, stok jadi, dan stok bahan harus diganti dengan hasil hitung fisik saat mulai pakai sistem.</p></div>`; }
@@ -3188,9 +3201,17 @@ function formHargaMassal(){
     async onSubmit(v){ if(!N(v.delta))return 'Isi besar perubahan harga.'; const ws=D.wilayah.filter(w=>!v.zona||w.zona===v.zona); const js=v.jenis?[v.jenis]:['Tunai','Kredit']; let n=0;
       for(const w of ws)for(const j of js){const h=hargaBerlaku(w.id,j,v.berlaku);if(h==null)continue;await put('harga',{id:'h-'+w.id+'-'+j+'-'+v.berlaku,wilayah:w.id,jenis:j,harga:h+N(v.delta),berlaku:v.berlaku,catatan:v.catatan||'perubahan massal',dibuat_oleh:meName()});n++} if(!n)return 'Tidak ada harga yang bisa diubah.'; },okMsg:'Harga massal diperbarui'});
 }
-function formKaryawan(rec){ openForm({title:rec?'Ubah karyawan':'Karyawan baru',values:rec||{status_kerja:'Harian',aktif:true},fields:[{k:'nama',label:'Nama',type:'text',req:1},{k:'jabatan',label:'Jabatan',type:'select',options:L.jabatan,req:1},{k:'status_kerja',label:'Status kepegawaian',type:'select',options:L.statusKerja,ph:false},{k:'gaji_pokok',label:'Gaji tetap / bulan (Rp)',type:'money'},{k:'gaji_harian',label:'Upah harian (Rp)',type:'money'},{k:'tunjangan',label:'Tunjangan tetap (Rp)',type:'money'},{k:'tarif_insentif',label:'Insentif per dus (Rp)',type:'money',hint:'Nilai awal; bisa diubah tiap bulan.'},{k:'tarif_bonus',label:'Bonus per dus (Rp)',type:'money'},{k:'tarif_lembur',label:'Tarif lembur / jam (Rp)',type:'money'},{k:'catatan',label:'Catatan',type:'text',full:1},{k:'sales',type:'check',text:'Ikut berjualan (muncul di daftar sales)',full:1},{k:'aktif',type:'check',text:'Masih aktif bekerja',full:1}],
+function formKaryawan(rec){
+  const owner=isOwner();
+  if(!owner&&(ME?.role!=='manager'||rec))return;
+  openForm({title:rec?'Ubah karyawan':'Karyawan baru',values:rec||{status_kerja:'Harian',aktif:true},fields:[{k:'nama',label:'Nama',type:'text',req:1},{k:'jabatan',label:'Jabatan',type:'select',options:L.jabatan,req:1},{k:'status_kerja',label:'Status kepegawaian',type:'select',options:L.statusKerja,ph:false},...(owner?[{k:'gaji_pokok',label:'Gaji tetap / bulan (Rp)',type:'money'},{k:'gaji_harian',label:'Upah harian (Rp)',type:'money'},{k:'tunjangan',label:'Tunjangan tetap (Rp)',type:'money'},{k:'tarif_insentif',label:'Insentif per dus (Rp)',type:'money',hint:'Nilai awal; bisa diubah tiap bulan.'},{k:'tarif_bonus',label:'Bonus per dus (Rp)',type:'money'},{k:'tarif_lembur',label:'Tarif lembur / jam (Rp)',type:'money'}]:[]),{k:'catatan',label:'Catatan',type:'text',full:1},{k:'sales',type:'check',text:'Ikut berjualan (muncul di daftar sales)',full:1},{k:'aktif',type:'check',text:'Masih aktif bekerja',full:1}],
   onChange(v,api,ch){if(ch==='jabatan'&&/sales/i.test(v.jabatan))api.set('sales',true)},
-  async onSubmit(v){const nums={};['gaji_pokok','gaji_harian','tunjangan','tarif_insentif','tarif_bonus','tarif_lembur'].forEach(a=>nums[a]=N(v[a]));await put('karyawan',{...(rec||{}),...v,...nums,nama:v.nama.toUpperCase()})}}); }
+  async onSubmit(v){
+    const nums={};
+    if(owner)['gaji_pokok','gaji_harian','tunjangan','tarif_insentif','tarif_bonus','tarif_lembur'].forEach(k=>nums[k]=N(v[k]));
+    await put('karyawan',{...(rec||{}),...v,...nums,nama:v.nama.toUpperCase()});
+  },okMsg:'Data karyawan tersimpan'});
+}
 function formKreditur(rec){ openForm({title:rec?'Ubah kreditur':'Kreditur baru',values:rec||{status:'Aktif'},fields:[{k:'nama',label:'Nama',type:'text',req:1},{k:'jenis',label:'Jenis',type:'select',options:L.jenisKreditur,req:1},{k:'kontak',label:'Kontak',type:'text'},{k:'rekening',label:'No. rekening / referensi',type:'text'},{k:'termin',label:'Termin (hari)',type:'number',step:1},{k:'status',label:'Status',type:'select',options:['Aktif','Nonaktif'],ph:false},{k:'catatan',label:'Catatan',type:'text',full:1}],async onSubmit(v){await put('kreditur',{...(rec||{}),...v,termin:N(v.termin)})}}); }
 const HALAL_STATUS=['Bersertifikat halal','Dikecualikan dari kewajiban sertifikat halal','Belum bersertifikat (perlu persetujuan BPJPH)'];
 function formBahan(rec){ openForm({title:rec?'Ubah bahan baku':'Bahan baku baru',values:rec||{status_halal:HALAL_STATUS[0],negara:'Indonesia'},fields:[{k:'nama',label:'Nama bahan',type:'text',req:1},{k:'merk',label:'Merk',type:'text'},{k:'satuan',label:'Satuan',type:'text',req:1},{k:'produsen',label:'Produsen',type:'text'},{k:'negara',label:'Negara produsen',type:'text'},{k:'supplier_halal',label:'Supplier',type:'text'},{k:'status_halal',label:'Status halal (SJPH)',type:'select',options:HALAL_STATUS,ph:false},{k:'no_sh',label:'No. sertifikat halal',type:'text',hint:'Kosongkan jika dikecualikan dari kewajiban sertifikat halal.'},{k:'lph',label:'Lembaga penerbit (LPH / BPJPH)',type:'text'},{k:'tgl_sh_terbit',label:'Tanggal terbit sertifikat halal',type:'date'},{k:'tgl_sh_berlaku',label:'Berlaku sampai (jika tercantum)',type:'date'},{k:'saldo_awal',label:'Saldo awal (hasil stok opname)',type:'number'},{k:'harga_acuan',label:'Harga acuan / satuan (Rp)',type:'number',hint:'Dipakai jika belum ada pembelian tercatat.'},{k:'per_dus',label:'Kebutuhan per dus (resep)',type:'number',hint:'mis. 48 gelas per dus; lid 0,0048 roll per dus.'}],async onSubmit(v){await put('bahan',{...(rec||{}),...v,saldo_awal:N(v.saldo_awal),harga_acuan:N(v.harga_acuan),per_dus:N(v.per_dus)})}}); }
