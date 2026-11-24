@@ -1050,9 +1050,63 @@ const stamp=(r,old)=>old?{...r,dibuat_oleh:old.dibuat_oleh,dibuat_pada:old.dibua
 /* =========================================================
    KOMPONEN TAMPILAN
    ========================================================= */
+const tableFilters=new Map();
+let tableOccurrences=new Map();
+const cellValue=cell=>cell.textContent.replace(/\s+/g,' ').trim();
+function showTableFilters(table){
+  const filters=tableFilters.get(table.dataset.filterTable)||new Map();
+  let visible=0;
+  for(const row of table.tBodies[0].rows){
+    row.style.display=[...filters].some(([i,set])=>!set.has(cellValue(row.cells[i])))?'none':'';
+    if(!row.style.display)visible++;
+  }
+  for(const b of table.querySelectorAll('[data-filter-column]')){
+    const active=filters.has(Number(b.dataset.filterColumn));
+    b.setAttribute('aria-pressed',String(active));
+    b.textContent=active?'▾ ●':'▾';
+  }
+  if(table.tFoot)table.tFoot.style.display=filters.size?'none':'';
+  const summary=table.previousElementSibling;
+  summary.hidden=!filters.size;
+  summary.firstElementChild.textContent=visible?visible+' dari '+table.tBodies[0].rows.length+' baris':'Tidak ada baris yang cocok';
+}
+function openColumnFilter(button){
+  const table=button.closest('table'), key=table.dataset.filterTable, index=Number(button.dataset.filterColumn);
+  const values=[...new Set(Array.from(table.tBodies[0].rows,r=>cellValue(r.cells[index])))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
+  const filters=tableFilters.get(key)||new Map();
+  const selected=new Set(filters.get(index)||values);
+  openModal(`<div class="mh"><h3>${esc(button.getAttribute('aria-label'))}</h3><button type="button" class="btn sm ghost" data-act="close" aria-label="Tutup">✕</button></div>
+    <div class="mb"><div class="full field"><label for="cf-search">Cari nilai</label><input type="search" id="cf-search"></div>
+    <div class="full acts"><button type="button" class="btn sm" id="cf-all">Pilih hasil pencarian</button><button type="button" class="btn sm" id="cf-none">Kosongkan pilihan</button></div>
+    <div class="full" id="cf-values" style="max-height:40vh;overflow:auto"></div></div>
+    <div class="mf"><button type="button" class="btn" id="cf-reset">Hapus filter</button><button type="button" class="btn pri" id="cf-apply">Terapkan</button></div>`);
+  const search=$('#cf-search'), list=$('#cf-values');
+  const label=v=>v||'(Kosong)';
+  const matches=()=>values.filter(v=>label(v).toLowerCase().includes(search.value.trim().toLowerCase()));
+  const draw=()=>{list.innerHTML=matches().map(v=>`<label class="check"><input type="checkbox" value="${esc(v)}" ${selected.has(v)?'checked':''}><span>${esc(label(v))}</span></label>`).join('')||'<p class="muted">Nilai tidak ditemukan.</p>';};
+  list.onchange=e=>{const input=e.target;if(input.checked)selected.add(input.value);else selected.delete(input.value);};
+  search.oninput=draw;
+  $('#cf-all').onclick=()=>{matches().forEach(v=>selected.add(v));draw();};
+  $('#cf-none').onclick=()=>{selected.clear();draw();};
+  const save=clear=>{
+    if(clear||(selected.size===values.length&&values.every(v=>selected.has(v))))filters.delete(index);
+    else filters.set(index,selected);
+    if(filters.size)tableFilters.set(key,filters);else tableFilters.delete(key);
+    closeModal();
+    render();
+  };
+  $('#cf-reset').onclick=()=>save(true);
+  $('#cf-apply').onclick=()=>save(false);
+  draw();
+  search.focus();
+}
 function tbl(cols,rows,{empty='Belum ada data.',foot=null}={}){
   if(!rows.length)return `<div class="empty">${empty}</div>`;
-  return `<div class="tw"><table><thead><tr>${cols.map(c=>`<th class="${c.c||''}">${c.h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td class="${c.c||''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody>${foot?`<tfoot><tr>${foot.map((x,i)=>`<td class="${cols[i]?.c||''}">${x}</td>`).join('')}</tr></tfoot>`:''}</table></div>`;
+  const signature=JSON.stringify([ME?.uid||ME?.role,ROUTE,TAB[ROUTE],cols.map(c=>c.h)]);
+  const occurrence=tableOccurrences.get(signature)||0;
+  tableOccurrences.set(signature,occurrence+1);
+  const key=signature+':'+occurrence;
+  return `<div class="tw"><div class="noprint" hidden style="padding:6px 10px"><span role="status"></span> <button type="button" class="btn sm ghost" data-filter-reset>Reset filter tabel</button></div><table data-filter-table="${esc(key)}"><thead><tr>${cols.map((c,i)=>`<th class="${c.c||''}">${c.h}${c.h&&c.c!=='act'?` <button type="button" class="btn sm ghost noprint" aria-label="Filter ${esc(c.h)}" aria-pressed="false" data-filter-column="${i}" style="padding:1px 5px;min-height:0">▾</button>`:''}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td class="${c.c||''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</tbody>${foot?`<tfoot><tr>${foot.map((x,i)=>`<td class="${cols[i]?.c||''}">${x}</td>`).join('')}</tr></tfoot>`:''}</table></div>`;
 }
 const head=(t,sub,acts='')=>`<div class="ph"><div><h1>${t}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="acts noprint">${acts}<button class="btn ghost" data-act="cetak">Cetak</button><button class="btn ghost" data-act="csvHal">Unduh CSV</button></div></div><!--/ph-->`;
 const kpi=(l,v,s='',cls='')=>`<div class="kpi ${cls}"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
@@ -4325,8 +4379,10 @@ function render(){
   if(!SCAN_CODE){try{const s=sessionStorage.getItem('cn_dus'); if(s){SCAN_CODE=s; sessionStorage.removeItem('cn_dus')}}catch(e){}}
   if(SCAN_CODE&&rs.includes('telusur'))ROUTE='telusur';
   const act=document.activeElement; const fk=act&&act.dataset&&act.dataset.f; let pos=null; try{pos=act.selectionStart}catch(e){}
+  tableOccurrences.clear();
   let html; try{html=ready()?V[ROUTE]():''}catch(e){console.error(e);html=`<div class="note warn">Halaman gagal ditampilkan: ${esc(e.message)}</div>`}
   app.innerHTML=shell(html);
+  app.querySelectorAll('table[data-filter-table]').forEach(table=>{if(tableFilters.has(table.dataset.filterTable))showTableFilters(table);});
   attachKamera();
   if(fk){const el=document.querySelector(`[data-f="${fk}"]`);if(el&&el.tagName==='INPUT'){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
 }
@@ -4334,6 +4390,10 @@ function render(){
 /* ---------- event global ---------- */
 document.addEventListener('click',e=>{
   if(e.target.matches('[data-mback]')){closeModal();return}
+  const filter=e.target.closest('[data-filter-column]');
+  if(filter){openColumnFilter(filter);return;}
+  const reset=e.target.closest('[data-filter-reset]');
+  if(reset){tableFilters.delete(reset.parentElement.nextElementSibling.dataset.filterTable);render();return;}
   const g=e.target.closest('[data-go]'); if(g){go(g.dataset.go);return}
   const a=e.target.closest('[data-act]'); if(a){const fn=ACT[a.dataset.act]; if(fn){e.preventDefault(); if(typeof catatLog==='function'&&a.dataset.act!=='logRefresh'&&a.dataset.act!=='logout')catatLog('Tekan tombol',(a.textContent||a.dataset.act).trim().replace(/\s+/g,' ').slice(0,80)); fn(a.dataset)}}
 });
