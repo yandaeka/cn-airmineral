@@ -2757,13 +2757,14 @@ V.validasi=()=>{
 
 V.karyawan=()=>{
   if(ME?.role!=='manager')return '';
-  const rows=[...D.karyawan].sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'));
+  const rows=D.karyawan.filter(k=>!k.diarsipkan_pada).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'));
   return head('Karyawan','Daftar karyawan pabrik.',`<button class="btn pri" data-act="newKaryawan">+ Karyawan</button>`)+
     tbl([
       {h:'Nama',f:k=>esc(k.nama)},
       {h:'Jabatan',f:k=>esc(k.jabatan)},
       {h:'Status kepegawaian',f:k=>esc(k.status_kerja||'–')},
-      {h:'Status kerja',f:k=>k.aktif===false?'Nonaktif':'Aktif'}
+      {h:'Status kerja',f:k=>k.aktif===false?'Nonaktif':'Aktif'},
+      {h:'',c:'act',f:k=>k.aktif===false?`<button class="btn sm ghost danger" data-act="hapusKaryawanNonaktif" data-id="${esc(k.id)}">Hapus dari daftar</button>`:''}
     ],rows,{empty:'Belum ada data karyawan.'});
 };
 
@@ -2775,7 +2776,7 @@ V.master=()=>{
     tbl([{h:'Wilayah',f:w=>`<b>${esc(w.nama)}</b>${zone(w.zona)}`},{h:'Harga tunai',c:'num',f:w=>{const h=hargaBerlaku(w.id,'Tunai',TODAY);return h!=null?rp(h):'<span class="warnt">belum ada</span>'}},{h:'Harga kredit',c:'num',f:w=>{const h=hargaBerlaku(w.id,'Kredit',TODAY);return h!=null?rp(h):'<span class="warnt">belum ada</span>'}},{h:'Berlaku sejak',f:w=>tgl(c.harga.find(h=>h.wilayah===w.id&&h.berlaku<=TODAY)?.berlaku)},{h:'Tempo',c:'num',f:w=>nf(w.termin,0)+' hr'},{h:'Bonus',f:w=>N(w.bonus_per)?`1 dus / ${w.bonus_per} dus`:'–'},{h:'Pelanggan',c:'num',f:w=>D.pelanggan.filter(p=>p.wilayah===w.id).length},{h:'',c:'act',f:w=>`<button class="btn sm pri" data-act="ubahHarga" data-id="${w.id}">Ubah harga</button> <button class="btn sm ghost" data-act="edit" data-col="wilayah" data-id="${w.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="wilayah" data-id="${w.id}">Hapus</button>`}],ws,{empty:'Belum ada wilayah.'})+
     `<div class="card" style="margin-top:14px"><h2>Riwayat harga</h2>${tbl([{h:'Berlaku',f:h=>tgl(h.berlaku)},{h:'Wilayah',f:h=>esc(c.wil[h.wilayah]?.nama||'?')+zone(c.wil[h.wilayah]?.zona)},{h:'Jenis',f:h=>h.jenis},{h:'Harga/dus',c:'num',f:h=>rp(h.harga)},{h:'Catatan',f:h=>esc(h.catatan||'')},{h:'',c:'act',f:h=>`<button class="btn sm ghost danger" data-act="del" data-col="harga" data-id="${h.id}">Hapus</button>`}],c.harga.slice(0,60))}</div>`; }
   else if(t==='pelanggan'){ body=`<div class="acts" style="margin-bottom:10px"><button class="btn pri" data-act="newPelanggan">+ Pelanggan</button></div>`+pelangganBody(); }
-  else if(t==='karyawan'){ body=`<div class="acts" style="margin-bottom:10px"><button class="btn pri" data-act="newKaryawan">+ Karyawan</button></div>`+tbl([{h:'Nama',f:k=>`<b>${esc(k.nama)}</b>${k.aktif===false?' '+chip('Nonaktif'):''}`},{h:'Jabatan',f:k=>esc(k.jabatan)},{h:'Status',f:k=>esc(k.status_kerja)},{h:'Gaji tetap',c:'num',f:k=>N(k.gaji_pokok)?rp(k.gaji_pokok):'–'},{h:'Upah harian',c:'num',f:k=>N(k.gaji_harian)?rp(k.gaji_harian):'–'},{h:'Insentif/dus',c:'num',f:k=>N(k.tarif_insentif)?rp(k.tarif_insentif):'–'},{h:'Sales',f:k=>k.sales===true||/sales/i.test(k.jabatan||'')?chip('Ya','info'):''},{h:'Catatan',f:k=>esc(k.catatan||'')},{h:'',c:'act',f:k=>`<button class="btn sm ghost" data-act="edit" data-col="karyawan" data-id="${k.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="karyawan" data-id="${k.id}">Hapus</button>`}],[...D.karyawan].sort((a,b)=>L.jabatan.indexOf(a.jabatan)-L.jabatan.indexOf(b.jabatan)||String(a.nama).localeCompare(b.nama))); }
+  else if(t==='karyawan'){ body=`<div class="acts" style="margin-bottom:10px"><button class="btn pri" data-act="newKaryawan">+ Karyawan</button></div>`+tbl([{h:'Nama',f:k=>`<b>${esc(k.nama)}</b>${k.aktif===false?' '+chip(k.diarsipkan_pada?'Diarsipkan':'Nonaktif'):''}`},{h:'Jabatan',f:k=>esc(k.jabatan)},{h:'Status',f:k=>esc(k.status_kerja)},{h:'Gaji tetap',c:'num',f:k=>N(k.gaji_pokok)?rp(k.gaji_pokok):'–'},{h:'Upah harian',c:'num',f:k=>N(k.gaji_harian)?rp(k.gaji_harian):'–'},{h:'Insentif/dus',c:'num',f:k=>N(k.tarif_insentif)?rp(k.tarif_insentif):'–'},{h:'Sales',f:k=>k.sales===true||/sales/i.test(k.jabatan||'')?chip('Ya','info'):''},{h:'Catatan',f:k=>esc(k.catatan||'')},{h:'',c:'act',f:k=>`<button class="btn sm ghost" data-act="edit" data-col="karyawan" data-id="${k.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="karyawan" data-id="${k.id}">Hapus</button>`}],[...D.karyawan].sort((a,b)=>L.jabatan.indexOf(a.jabatan)-L.jabatan.indexOf(b.jabatan)||String(a.nama).localeCompare(b.nama))); }
   else if(t==='kreditur'){ body=`<div class="acts" style="margin-bottom:10px"><button class="btn pri" data-act="newKreditur">+ Kreditur</button></div>`+tbl([{h:'Nama',f:k=>`<b>${esc(k.nama)}</b>`},{h:'Jenis',f:k=>esc(k.jenis)},{h:'Kontak',f:k=>esc(k.kontak||'')},{h:'Rekening / ref.',f:k=>esc(k.rekening||'')},{h:'Termin',c:'num',f:k=>N(k.termin)?k.termin+' hr':'–'},{h:'Status',f:k=>esc(k.status||'')},{h:'',c:'act',f:k=>`<button class="btn sm ghost" data-act="edit" data-col="kreditur" data-id="${k.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="kreditur" data-id="${k.id}">Hapus</button>`}],D.kreditur); }
   else if(t==='bahan'){ body=`<div class="acts" style="margin-bottom:10px"><button class="btn pri" data-act="newBahan">+ Bahan baku</button><button class="btn" data-act="newProduk">+ Produk jadi</button></div>`+tbl([{h:'Bahan',f:b=>`<b>${esc(b.nama)}</b>`},{h:'Satuan',f:b=>esc(b.satuan)},{h:'Saldo awal',c:'num',f:b=>nf(b.saldo_awal)},{h:'Harga acuan',c:'num',f:b=>rp(b.harga_acuan)},{h:'Harga rata-rata beli',c:'num',f:b=>c.beli[b.id]?.q?rp(c.hargaBahan(b.id)):'–'},{h:'Resep per dus',c:'num',f:b=>nf(b.per_dus,4)},{h:'Biaya / dus',c:'num',f:b=>rp(N(b.per_dus)*c.hargaBahan(b.id))},{h:'',c:'act',f:b=>`<button class="btn sm ghost" data-act="edit" data-col="bahan" data-id="${b.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="bahan" data-id="${b.id}">Hapus</button>`}],c.bahan,{foot:['HPP standar / dus','','','','','',rp(c.bahan.reduce((a,b)=>a+N(b.per_dus)*c.hargaBahan(b.id),0)),'']})+`<div class="card" style="margin-top:14px"><h2>Produk jadi</h2>${tbl([{h:'Kode',f:p=>`<span class="mono">${esc(p.kode||p.id)}</span>`},{h:'Nama',f:p=>esc(p.nama)},{h:'Satuan',f:p=>esc(p.satuan)},{h:'',c:'act',f:p=>`<button class="btn sm ghost" data-act="edit" data-col="produk" data-id="${p.id}">Ubah</button> <button class="btn sm ghost danger" data-act="delMaster" data-col="produk" data-id="${p.id}">Hapus</button>`}],D.produk)}</div>`; }
   else if(t==='impor'){ body=imporView(); }
@@ -3209,7 +3210,7 @@ function formKaryawan(rec){
   async onSubmit(v){
     const nums={};
     if(owner)['gaji_pokok','gaji_harian','tunjangan','tarif_insentif','tarif_bonus','tarif_lembur'].forEach(k=>nums[k]=N(v[k]));
-    await put('karyawan',{...(rec||{}),...v,...nums,nama:v.nama.toUpperCase()});
+    await put('karyawan',{...(rec||{}),...v,...nums,nama:v.nama.toUpperCase(),...(rec?.diarsipkan_pada&&v.aktif?{diarsipkan_pada:null}:{})});
   },okMsg:'Data karyawan tersimpan'});
 }
 function formKreditur(rec){ openForm({title:rec?'Ubah kreditur':'Kreditur baru',values:rec||{status:'Aktif'},fields:[{k:'nama',label:'Nama',type:'text',req:1},{k:'jenis',label:'Jenis',type:'select',options:L.jenisKreditur,req:1},{k:'kontak',label:'Kontak',type:'text'},{k:'rekening',label:'No. rekening / referensi',type:'text'},{k:'termin',label:'Termin (hari)',type:'number',step:1},{k:'status',label:'Status',type:'select',options:['Aktif','Nonaktif'],ph:false},{k:'catatan',label:'Catatan',type:'text',full:1}],async onSubmit(v){await put('kreditur',{...(rec||{}),...v,termin:N(v.termin)})}}); }
@@ -3487,6 +3488,19 @@ const ACT={
     window.addEventListener('afterprint',off); window.print();
   }catch(e){toast('Cetak tidak tersedia di tampilan ini. Buka aplikasi di browser lalu coba lagi.','bad')}},
   nota:d=>showNota(d.no,d.tries||0),
+  hapusKaryawanNonaktif:d=>{
+    const k=D.karyawan.find(k=>k.id===d.id);
+    if(ME?.role!=='manager'||k?.aktif!==false||k.diarsipkan_pada)return;
+    if(!hasSB()||!navigator.onLine)return toast('Hubungkan perangkat ke internet untuk menghapus karyawan dari daftar.','warn');
+    confirmBox(`<p>Hapus <b>${esc(k.nama)}</b> dari daftar karyawan? Riwayat absensi dan gaji tetap tersimpan.</p>`,'Hapus dari daftar',async()=>{
+      const {data,error}=await SB.rpc('cn_arsip_karyawan_nonaktif',{p_id:k.id});
+      if(error)throw error;
+      await reloadCol('karyawan');
+      if(!data)throw new Error('Data sudah berubah. Periksa status karyawan dan coba lagi.');
+      catatLog('Arsipkan karyawan','Karyawan · '+k.nama);
+      toast('Karyawan dihapus dari daftar.');
+    });
+  },
   delMaster:d=>{const col=d.col,r=D[col].find(x=>x.id===d.id);if(!r)return;const nm=r.nama||r.kode||r.id;let used='',alt=null;
     if(col==='pelanggan'){const n=D.penjualan.filter(p=>p.pelanggan===r.id).length;if(n)used=`${n} penjualan memakai pelanggan ini`}
     if(col==='karyawan'){const g=D.gaji.filter(x=>x.karyawan===r.id).length,p=D.penjualan.filter(x=>String(x.sales).toUpperCase()===String(r.nama).toUpperCase()).length;if(g||p){used=[g?`${g} slip gaji`:'',p?`${p} penjualan`:''].filter(Boolean).join(' dan ')+' memakai karyawan ini';alt='nonaktif'}}
