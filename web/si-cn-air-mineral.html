@@ -710,7 +710,7 @@ pre.nota{background:var(--surface-2);border:1px solid var(--line);border-radius:
    SI CN AIR MINERAL — prototipe
    Struktur & rumus mengikuti workbook v6 (INPUT_*, REKAP_*, HPP, KAS)
    ========================================================= */
-const COLS=['pengaturan','produk','bahan','karyawan','kreditur','wilayah','harga','pelanggan','penjualan','pembayaran','pengeluaran','produksi','pemakaian','mutasi','opname','inv_supplier','hutang_lain','bayar_hutang','gaji','keamanan','transfer','keluar','absensi','sanitasi','peralatan','perawatan','uji_air','wajah','absen_tolak','dus','muatan','audit','audit_temuan','audit_foto','rtm'];
+const COLS=['pengaturan','produk','bahan','karyawan','kreditur','wilayah','harga','pelanggan','penjualan','pembayaran','transfer_bri','pengeluaran','produksi','pemakaian','mutasi','opname','inv_supplier','hutang_lain','bayar_hutang','gaji','keamanan','transfer','keluar','absensi','sanitasi','peralatan','perawatan','uji_air','wajah','absen_tolak','dus','muatan','audit','audit_temuan','audit_foto','rtm'];
 const D={}; COLS.forEach(c=>D[c]=[]);
 let DB=null, MODE='loading', VER=0, rafP=false, drawer=false, loginRole=null;
 const loaded=new Set();
@@ -2172,6 +2172,95 @@ function ringkasanHarianHTML(c){
   tbl([{h:'Akun',f:r=>esc(r.akun)},{h:'Masuk',c:'num',f:r=>r.masuk?rp(r.masuk):'–'},{h:'Keluar',c:'num',f:r=>r.keluar?rp(r.keluar):'–'},{h:'Saldo akhir',c:'num',f:r=>`<b>${rp(r.saldo)}</b>`}],per,{})}
   </div>`;
 }
+const canReviewBri=()=>['owner','manager'].includes(ME?.role);
+const isBriReceipt=v=>v.metode==='Transfer'&&(ME.role==='sales'||v.akun==='Bank BRI');
+function briTable(){
+  const rows=[...D.transfer_bri].sort((a,b)=>String(b.diajukan_pada).localeCompare(String(a.diajukan_pada)));
+  return `<div class="card" style="margin:12px 0"><h2>Verifikasi transfer BRI</h2>`+tbl([
+    {h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Invoice',f:r=>esc(r.ref)},{h:'Pembayar',f:r=>esc(r.pembayar)},
+    {h:'Nominal',c:'num',f:r=>rp(r.nominal)},{h:'Sales invoice',f:r=>esc(r.sales_invoice)},
+    {h:'Penginput',f:r=>esc(r.penginput)},{h:'Status',f:r=>esc(r.status)+(r.catatan_verifikasi?`<br><small>${esc(r.catatan_verifikasi)}</small>`:'')},
+    {h:'Bukti',f:r=>`<button class="btn sm" data-act="buktiBri" data-id="${esc(r.id)}">Lihat bukti</button>`},
+    {h:'',c:'act',f:r=>canReviewBri()&&r.status==='Menunggu verifikasi'?`<button class="btn sm pri" data-act="reviewBri" data-id="${esc(r.id)}" data-ok="1">Setujui</button> <button class="btn sm danger" data-act="reviewBri" data-id="${esc(r.id)}">Tolak</button>`:r.verifikator?esc(r.verifikator):''}
+  ],rows,{empty:'Belum ada pengajuan transfer BRI.'})+'</div>';
+}
+async function bukaBuktiBri(id){
+  const row=D.transfer_bri.find(r=>r.id===id);
+  if(!row||!hasSB())return;
+  const {data,error}=await SB.storage.from('bukti-bri').createSignedUrl(row.bukti_foto,300);
+  if(error)return toast('Bukti tidak bisa dibuka: '+sbErr(error),'bad');
+  openModal(`<div class="mh"><h3>Bukti transfer BRI</h3><button class="btn sm ghost" data-act="close" aria-label="Tutup">✕</button></div>
+    <div class="mb">${row.bukti_foto.endsWith('.jpg')?`<img class="full" style="max-width:100%;max-height:60vh;margin:auto" src="${esc(data.signedUrl)}" alt="Bukti transfer BRI">`:''}
+    <a class="btn full" href="${esc(data.signedUrl)}" target="_blank" rel="noopener noreferrer">Buka bukti</a></div>`);
+}
+function reviewBri(id,setuju){
+  const r=D.transfer_bri.find(x=>x.id===id);
+  if(!r||!canReviewBri()||r.status!=='Menunggu verifikasi')return;
+  openForm({title:setuju?'Verifikasi transfer BRI':'Tolak transfer BRI',lockOnSubmit:true,
+    fields:[
+      {type:'html',html:`<p><b>${esc(r.ref)}</b> · ${esc(r.pembayar)} · ${rp(r.nominal)}</p>${setuju?'<p>Cocokkan bukti dengan transaksi masuk pada mutasi BRI.</p>':''}`},
+      {k:'catatan',label:setuju?'Referensi unik dari mutasi BRI':'Alasan penolakan',type:'text',full:1,req:1}
+    ],
+    async onSubmit(v){
+      if(!navigator.onLine)return 'Hubungkan perangkat ke internet.';
+      const {error}=await SB.rpc('cn_verifikasi_bri',{p_id:id,p_setuju:setuju,p_catatan:v.catatan});
+      if(error)throw error;
+      await Promise.all([reloadCol('transfer_bri'),reloadCol('pembayaran')]);
+    },okMsg:setuju?'Transfer terverifikasi dan penerimaan tercatat':'Pengajuan ditolak'});
+}
+function formBri(ref='',tanggal=TODAY,nominal=''){
+  if(!hasSB()||!['sales','owner','manager'].includes(ME?.role))return;
+  const invoices=C().inv.filter(i=>i.sisa>0);
+  const id=crypto.randomUUID();
+  let file=null,path='';
+  openForm({title:'Ajukan transfer BRI',lockOnSubmit:true,
+    values:{ref,tanggal,nominal:nominal||invoices.find(i=>i.no===ref)?.sisa||''},
+    fields:[
+      {type:'html',html:`<p>Bank BRI <b>${esc(REK_BRI.no)}</b> a.n. ${esc(REK_BRI.nama)}. Pembayaran masuk setelah diverifikasi.</p>`},
+      {k:'ref',label:'Invoice',type:'select',options:invoices.map(i=>[i.no,i.no+' · '+i.pelNama+' · '+rp(i.sisa)]),req:1,full:1,seg:false},
+      {k:'tanggal',label:'Tanggal transfer',type:'date',req:1},{k:'nominal',label:'Nominal transfer (Rp)',type:'money',req:1},
+      {type:'html',html:`<div class="field"><label for="bri-file">Bukti transfer (PDF atau foto)</label>
+        <input id="bri-file" type="file" accept="application/pdf,.pdf,image/*">
+        <input id="bri-camera" type="file" accept="image/*" capture="environment" hidden>
+        <div><button type="button" id="bri-take" class="btn sm">Ambil foto</button></div>
+        <span id="bri-file-status" class="hint" role="status">PDF maksimal 10 MB.</span></div>`}
+    ],
+    onChange(v,api,ch){if(ch==='ref')api.set('nominal',invoices.find(i=>i.no===v.ref)?.sisa||'');},
+    async onSubmit(v){
+      if(!navigator.onLine)return 'Hubungkan perangkat ke internet.';
+      const inv=invoices.find(i=>i.no===v.ref);
+      if(!inv||!Number.isSafeInteger(v.nominal)||v.nominal<=0||v.nominal>inv.sisa)return 'Nominal harus lebih dari nol dan maksimal sebesar sisa invoice.';
+      if(!file)return 'Lampirkan bukti transfer.';
+      if(!path){
+        const pdf=file.type==='application/pdf'||(!file.type&&/\.pdf$/i.test(file.name));
+        if(pdf&&file.size>10*1024*1024)return 'PDF maksimal 10 MB.';
+        if(!pdf&&!file.type.startsWith('image/'))return 'Pilih PDF atau foto.';
+        const status=$('#bri-file-status');
+        status.textContent='Mengunggah bukti…';
+        try{
+          const uploadPath=`${ME.uid}/${crypto.randomUUID()}.${pdf?'pdf':'jpg'}`;
+          const blob=pdf?file:await kompres(file,1600,0.85);
+          const {error}=await SB.storage.from('bukti-bri').upload(uploadPath,blob,{contentType:pdf?'application/pdf':'image/jpeg'});
+          if(error)throw error;
+          path=uploadPath;
+          status.textContent='Bukti telah diunggah.';
+        }catch(e){status.textContent='Gagal unggah bukti. Coba lagi.';throw e;}
+      }
+      const {error}=await SB.rpc('cn_ajukan_bri',{p_id:id,p_ref:v.ref,p_tanggal:v.tanggal,p_nominal:v.nominal,p_bukti:path});
+      if(error)throw error;
+      await reloadCol('transfer_bri');
+    },okMsg:'Transfer diajukan, menunggu verifikasi'});
+  const picker=$('#bri-file'),camera=$('#bri-camera');
+  $('#bri-take').onclick=()=>camera.click();
+  for(const input of [picker,camera])input.onchange=()=>{
+    if(!input.files[0]||$('#fsub').disabled)return;
+    file=input.files[0];
+    path='';
+    if(input===camera)picker.value='';
+    $('#bri-file-status').textContent='Dipilih: '+file.name;
+  };
+}
+
 V.penerimaan=()=>{
   const c=C(); const sales=ME.role==='sales';
   let rows=[...D.pembayaran].sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
@@ -2181,10 +2270,11 @@ V.penerimaan=()=>{
   const tot=rows.reduce((a,r)=>a+N(r.nominal),0);
   const by={}; rows.forEach(r=>by[r.jenis]=(by[r.jenis]||0)+N(r.nominal));
   const owMgr=!sales&&(isOwner()||ME.role==='manager');
-  return (owMgr?tickerHTML(c):'')+head(sales?'Penagihan':'Penerimaan Kas','Catat uang yang benar-benar diterima. Cicilan/panjar memakai nomor invoice yang sama. Pinjaman dicatat di menu Hutang.',CAN.addPenerimaan()?`<button class="btn pri" data-act="newPenerimaan">+ ${sales?'Catat penagihan':'Catat penerimaan'}</button>`:'')+
+  return (owMgr?tickerHTML(c):'')+head(sales?'Penagihan':'Penerimaan Kas','Catat uang yang benar-benar diterima. Cicilan/panjar memakai nomor invoice yang sama. Pinjaman dicatat di menu Hutang.',CAN.addPenerimaan()?`<button class="btn pri" data-act="newPenerimaan">+ ${sales?'Catat penagihan':'Catat penerimaan'}</button> <button class="btn" data-act="ajukanBri">+ Transfer BRI</button>`:'')+
+  (CAN.addPenerimaan()?briTable():'')+
   `<div class="filters">${mSel}${selF('j_pn','Jenis',[['','Semua jenis'],...L.jenisPenerimaan])}</div>
   <div class="kpis">${kpi('Total diterima',rp(tot),rows.length+' transaksi','hl')}${Object.entries(by).map(([k,v])=>kpi(k,rp(v))).join('')}</div>`+
-  (owMgr?ringkasanHarianHTML(c):'')+tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Jenis',f:r=>esc(r.jenis)},{h:'Pembayar',f:r=>esc(r.pembayar)},{h:'Metode',f:r=>esc(r.metode)+(r.bukti_foto?`<br><button class="btn sm ghost" data-act="lihatNota" data-p="${esc(r.bukti_foto)}">Lihat bukti</button>`:(r.metode==='Transfer'||r.metode==='QRIS')?'<br><span class="sub">belum ada bukti</span>':'')},{h:'Nominal',c:'num',f:r=>`<b>${rp(r.nominal)}</b>`},{h:'Invoice',f:r=>r.ref?`<span class="mono">${esc(r.ref)}</span>`:'–'},{h:'Validasi',f:r=>{if(!r.ref)return r.jenis==='Penagihan piutang'?chip('Tanpa invoice','bad'):'–';const i=c.invByNo[r.ref];if(!i)return chip('Invoice tidak ada','bad');return i.valid==='OK'?chip('Lunas','ok'):i.valid==='LEBIH'?chip('Bayar lebih','bad'):chip('Sisa '+rpS(i.sisa),'warn')}},{h:'Dicatat',f:r=>`<span class="sub">${esc(r.dibuat_oleh||'')}</span>`},{h:'',c:'act',f:r=>actCell('pembayaran',r)}],rows,{empty:'Belum ada penerimaan di periode ini.'});
+  (owMgr?ringkasanHarianHTML(c):'')+tbl([{h:'Tanggal',f:r=>tgl(r.tanggal)},{h:'Jenis',f:r=>esc(r.jenis)},{h:'Pembayar',f:r=>esc(r.pembayar)},{h:'Metode',f:r=>esc(r.metode)+(r.bukti_foto?`<br><button class="btn sm ghost" data-act="lihatNota" data-p="${esc(r.bukti_foto)}">Lihat bukti</button>`:(r.metode==='Transfer'||r.metode==='QRIS')?'<br><span class="sub">belum ada bukti</span>':'')},{h:'Nominal',c:'num',f:r=>`<b>${rp(r.nominal)}</b>`},{h:'Invoice',f:r=>r.ref?`<span class="mono">${esc(r.ref)}</span>`:'–'},{h:'Validasi',f:r=>{if(!r.ref)return r.jenis==='Penagihan piutang'?chip('Tanpa invoice','bad'):'–';const i=c.invByNo[r.ref];if(!i)return chip('Invoice tidak ada','bad');return i.valid==='OK'?chip('Lunas','ok'):i.valid==='LEBIH'?chip('Bayar lebih','bad'):chip('Sisa '+rpS(i.sisa),'warn')}},{h:'Dicatat',f:r=>`<span class="sub">${esc(r.dibuat_oleh||'')}</span>`},{h:'',c:'act',f:r=>r.bri_id?'':actCell('pembayaran',r)}],rows,{empty:'Belum ada penerimaan di periode ini.'});
 };
 
 // ---- Tagihan via WhatsApp (kirim manual) + tautan pembayaran Midtrans per invoice ----
@@ -2894,7 +2984,7 @@ function openForm(cfg){
   form.addEventListener('submit',async e=>{e.preventDefault();const v=vals();const miss=fields.filter(f=>f.req&&!form.querySelector(`.field[data-k="${f.k}"]`)?.hidden&&(v[f.k]===''||v[f.k]==null));if(miss.length){$('#ferr').textContent='Lengkapi: '+miss.map(f=>f.label).join(', ');return}
     const btn=$('#fsub');if(btn.disabled)return;btn.disabled=true;$('#ferr').textContent='';
     if(cfg.lockOnSubmit)form.dataset.saving='';
-    try{const r=await onSubmit(v,api);if(typeof r==='string'){$('#ferr').textContent=r;btn.disabled=false;return}delete form.dataset.saving;closeModal();toast(cfg.okMsg||'Tersimpan')}catch(err){console.error(err);$('#ferr').textContent=errMsg(err);btn.disabled=false}finally{delete form.dataset.saving}});
+    try{const r=await onSubmit(v,api);if(typeof r==='string'){$('#ferr').textContent=r;btn.disabled=false;return}delete form.dataset.saving;closeModal();if(typeof r==='function')r();else toast(cfg.okMsg||'Tersimpan')}catch(err){console.error(err);$('#ferr').textContent=errMsg(err);btn.disabled=false}finally{delete form.dataset.saving}});
   fire('init');
   setTimeout(()=>{const first=form.querySelector('input:not([type=checkbox]):not([disabled]),select:not([disabled])');first&&first.focus()},30);
 }
@@ -2977,6 +3067,9 @@ function formPenjualan(rec){
       const p=c.pel[v.pelanggan]||D.pelanggan.find(x=>x.id===v.pelanggan);
       const r=stamp({dari_gudang:dariGudang,muatan_id:muatanId||rec?.muatan_id||'',id:edit?rec.id:'pj-'+no,no,tanggal:v.tanggal,sales:v.sales,pelanggan:v.pelanggan||'',pelanggan_nama:p?.nama||(v.pelanggan?'':'Tunai umum'),jenis:v.jenis,dus:N(v.dus),bonus:N(v.bonus),harga:N(v.harga),diskon:N(v.diskon),retur:N(v.retur),jatuh_tempo:v.jenis==='Kredit'?v.jatuh_tempo:'',catatan:v.catatan},edit?rec:null);
       await put('penjualan',r);
+      if(!edit&&v.jenis==='Tunai'&&v.terima&&v.metode==='Transfer'){
+        return ()=>{toast('Penjualan tersimpan. Ajukan bukti transfer BRI.');formBri(no,v.tanggal);};
+      }
       if(!edit&&v.jenis==='Tunai'&&v.terima){const bersih=N(v.dus)*N(v.harga)-N(v.diskon)-N(v.retur)*N(v.harga);await put('pembayaran',stamp({tanggal:v.tanggal,jenis:'Penjualan tunai',pembayar:p?.nama||('Tunai '+v.sales),metode:v.metode||'Tunai',akun:akDef(v.metode),nominal:bersih,ref:no,catatan:'otomatis dari penjualan'}))}
       if(!edit)setTimeout(()=>showNota(no),80);
     },okMsg:edit?'Penjualan diperbarui':'Penjualan tersimpan'});
@@ -3013,6 +3106,7 @@ function tagihSelesai(x){
   $('#tsLain').onclick=()=>tagihPilih();
 }
 function formPenerimaan(rec,preNo){
+  if(rec?.bri_id)return;
   const c=C(), edit=!!rec, sales=ME.role==='sales';
   const jenis=sales?['Penagihan piutang','Penjualan tunai']:L.jenisPenerimaan;
   const invList=()=>c.inv.filter(i=>(i.sisa>0||(edit&&i.no===rec.ref))&&(!sales||i.sales===meName())).sort((a,b)=>a.pelNama.localeCompare(b.pelNama)).map(i=>[i.no,`${i.no} · ${i.pelNama} · sisa ${rp(i.sisa+(edit&&i.no===rec.ref?N(rec.nominal):0))}`]);
@@ -3022,14 +3116,21 @@ function formPenerimaan(rec,preNo){
       {k:'ref',label:'Nomor invoice',type:'select',options:invList(),full:1},{k:'pembayar',label:'Pelanggan / pembayar',type:'text',req:1},{k:'nominal',label:'Uang diterima (Rp)',type:'money',req:1,full:1},
       {k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Masuk ke'),{k:'bukti_foto',label:'Bukti transfer / QRIS (foto atau PDF)',type:'upload',full:1,hidden:true,hint:'Wajib untuk Transfer dan QRIS.'},{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1}],
     onChange(v,api,ch){ const needRef=v.jenis==='Penagihan piutang'||v.jenis==='Penjualan tunai'; api.show('ref',needRef);
-      api.show('bukti_foto',v.metode==='Transfer'||v.metode==='QRIS');
-      if(ch==='metode')api.set('akun',akDef(v.metode));
+      if(ch==='metode')api.set('akun',v.metode==='Transfer'&&sales?'Bank BRI':akDef(v.metode));
+      if(ch==='metode')v.akun=v.metode==='Transfer'&&sales?'Bank BRI':akDef(v.metode);
+      api.show('bukti_foto',!isBriReceipt(v)&&(v.metode==='Transfer'||v.metode==='QRIS'));
+      api.show('akun',!(sales&&v.metode==='Transfer'));
+      api.hint('metode',isBriReceipt(v)?'Transfer BRI akan diajukan untuk verifikasi.':'');
       const i=c.invByNo[v.ref]; if(ch==='ref'&&i){api.set('pembayar',i.pelNama);api.set('nominal',i.sisa)}
       const sisa=i?i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0):null;
       api.hint('nominal',i?`Sisa tagihan ${rp(sisa)}`+(N(v.nominal)>sisa?' · <span class="badt">melebihi sisa</span>':N(v.nominal)&&N(v.nominal)<sisa?` · panjar, sisa setelah ini ${rp(sisa-N(v.nominal))}`:N(v.nominal)===sisa?' · <span class="okt">lunas</span>':''):''); },
     async onSubmit(v){ const needRef=v.jenis==='Penagihan piutang'||v.jenis==='Penjualan tunai'; if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.';
       if(needRef&&!v.ref)return 'Pilih nomor invoice agar piutang berkurang.';
       const i=c.invByNo[v.ref]; if(needRef&&i){const sisa=i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0);if(N(v.nominal)>sisa)return `Nominal melebihi sisa tagihan (${rp(sisa)}).`}
+      if(isBriReceipt(v)){
+        if(edit)return 'Ajukan penerimaan BRI baru dari menu Transfer BRI.';
+        return ()=>formBri(v.ref,v.tanggal,v.nominal);
+      }
       const butuhBukti=v.metode==='Transfer'||v.metode==='QRIS';
       if(butuhBukti&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS.';
       const sblm=i?i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0):0;
@@ -3524,7 +3625,7 @@ const ACT={
   detailPel:d=>openPelDetail(d.id),
   kirimSales:d=>{ const c=C(); const k=D.karyawan.find(x=>x.nama===d.s); const n=waNum(k?.hp); if(!n){toast('No. HP '+d.s+' belum diisi','bad');return} window.open(`https://wa.me/${n}?text=${encodeURIComponent(kirimSalesTeks(d.s,c,Number(d.min||31),Number(d.max||9999)))}`,'_blank'); },
   waTagih:d=>{ const c=C(); let l=c.piutang.filter(i=>i.no===d.no); if(!l.length){ l=c.inv.filter(i=>i.no===d.no&&N(i.sisa)>0).map(i=>({...i,jatuh_tempo:i.jatuh_tempo||i.tanggal})); } if(l.length)waTagihModal(l); }, waPel:d=>{ const l=C().piutang.filter(i=>String(i.pelanggan)===String(d.id)&&N(i.sisa)>0).sort((a,b)=>String(a.jatuh_tempo||'').localeCompare(String(b.jatuh_tempo||''))); if(l.length)waTagihModal(l); else toast('Tidak ada tagihan','bad'); },
-  newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
+  newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), ajukanBri:()=>formBri(), buktiBri:d=>bukaBuktiBri(d.id), reviewBri:d=>reviewBri(d.id,d.ok==='1'), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
   newPengeluaran:()=>formPengeluaran(), tagihPilih:()=>tagihPilih(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
   livePixel:()=>{F.lv_pixel=(F.lv_pixel===false); bump()}, newMutasi:()=>formMutasi(), newOpname:()=>formOpname(), sanCek:d=>sanToggle(d.k), absMasuk:d=>absen(d.id,'masuk'), wajahReset:d=>wajahReset(d.id), absPulang:d=>absen(d.id,'pulang'), absKet:d=>formAbsenKet(d.id), fotoProfil:d=>fotoProfil(d.id), fotoLihat:d=>fotoLihat(d.path), liveFull:()=>{const el=document.documentElement; F.lv_full=!F.lv_full; try{ if(F.lv_full){(el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el)} else if(document.fullscreenElement){document.exitFullscreen&&document.exitFullscreen()} }catch(e){} bump()}, newKeluar:()=>formKeluar(), newHutangLain:()=>formHutangLain(), newBayarHutang:()=>formBayarHutang(), bayarKode:d=>formBayarHutang(null,d.kode),
   newGaji:()=>formGaji(), newWilayah:()=>formWilayah(), ubahHarga:d=>formUbahHarga(D.wilayah.find(w=>w.id===d.id)), hargaMassal:formHargaMassal,
