@@ -1013,7 +1013,8 @@ function grpTarget(x){ const l=LASTG[x.l]; return x.r.some(y=>y[0]===ROUTE)?ROUT
 function heroHTML(){
   const t=(ic,b,s,attr,dk)=>`<button class="${dk?'dk':''}" ${attr}><span class="hi">${nIco(ic,24)}</span><span><b>${b}</b><small>${s}</small></span></button>`;
   const r=ME.role, can=CAN.addPenjualan();
-  if((r==='owner'&&ROUTE==='dashboard')||(r==='manager'&&ROUTE==='produksi')) return can?`<div class="hero">${t('cart','Jual','Catat penjualan & nota','data-act="newPenjualan"')}${t('cash','Tagih','Terima bayar piutang','data-act="tagihPilih"',1)}</div>`:'';
+  const bayar=r==='manager'?t('money','Bayar hutang','Catat cicilan atau pelunasan','data-act="newBayarHutang"'):'';
+  if((r==='owner'&&ROUTE==='dashboard')||(r==='manager'&&ROUTE==='produksi')) return can?`<div class="hero">${t('cart','Jual','Catat penjualan & nota','data-act="newPenjualan"')}${t('cash','Tagih','Terima bayar piutang','data-act="tagihPilih"',1)}${bayar}</div>`:'';
   if(r==='gudang'&&ROUTE==='muatan') return `<div class="hero">${t('scan','Scan dus','Keluar / telusur','data-go="telusur"')}${t('box','Terima bahan','Catat bahan masuk','data-act="newPembelian"',1)}</div>`;
   if(r==='produksi'&&ROUTE==='produksi') return `<div class="hero">${t('lab','Catat produksi','Dus jadi, pH, TDS','data-act="newProduksi"')}${t('tag','Cetak label','Kode dus hari ini','data-go="label"',1)}</div>`;
   if(r==='lab'&&ROUTE==='uji') return `<div class="hero">${t('drop','Uji air baku','pH, TDS, organoleptik','data-act="ujiAirBaru" data-tahap="baku"')}${t('drop','Uji air proses','Air setengah jadi','data-act="ujiAirBaru" data-tahap="proses"',1)}</div>`;
@@ -2971,6 +2972,24 @@ function openForm(cfg){
   const form=$('#mform');
   const vals=()=>{const o={};fields.forEach(f=>{if(!f.k||['html','sep','btn'].includes(f.type))return;const el=form.elements[f.k];if(!el)return;if(el.type==='checkbox')o[f.k]=el.checked;else if(f.type==='money'||f.type==='number')o[f.k]=el.value===''?'':Number(el.value);else o[f.k]=String(el.value).trim()});return o};
   form.querySelectorAll('input[data-upload]').forEach(el=>el.addEventListener('change',async()=>{const k=el.dataset.upload, f=el.files[0]; if(!f)return; const h=form.elements[k], hint=$('#h_'+k,form);
+    if(fields.find(field=>field.k===k)?.buktiHutang){
+      const save=$('#fsub',form);
+      el.disabled=true;save.disabled=true;
+      try{
+        if(!hasSB()||!navigator.onLine)throw new Error('Hubungkan perangkat ke internet.');
+        const pdf=f.type==='application/pdf'||(!f.type&&/\.pdf$/i.test(f.name));
+        if(pdf&&f.size>10*1024*1024)throw new Error('PDF maksimal 10 MB.');
+        if(!pdf&&!f.type.startsWith('image/'))throw new Error('Pilih foto atau PDF.');
+        hint.textContent='Mengunggah bukti…';
+        const path=`bayar-hutang/${genId()}.${pdf?'pdf':'jpg'}`;
+        const blob=pdf?f:await kompres(f,1600,0.85);
+        const {error}=await SB.storage.from('bukti-setoran').upload(path,blob,{contentType:pdf?'application/pdf':'image/jpeg'});
+        if(error)throw error;
+        h.value=path;hint.textContent='Bukti tersimpan.';
+      }catch(e){el.value='';hint.textContent='Gagal unggah bukti: '+(e.message||e);}
+      finally{el.disabled=false;save.disabled=false;}
+      return;
+    }
     if(!hasSB()){ if(hint)hint.textContent='Foto nota hanya bisa disimpan saat terhubung ke server.'; el.value=''; return }
     try{ if(hint)hint.textContent='Mengunggah nota…'; const acak=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
       if(f.type==='application/pdf'){ if(f.size>10*1024*1024) throw new Error('PDF maksimal 10 MB'); const path=`nota/${TODAY}/${acak}.pdf`; const {error}=await SB.storage.from('foto').upload(path,f,{contentType:'application/pdf',upsert:false}); if(error) throw error; h.value=path; }
@@ -3330,12 +3349,14 @@ function formHutangLain(rec){
       await put('hutang_lain',stamp({id:rec?.id||kode,kode,...v,nominal:N(v.nominal),dana_masuk:N(v.dana_masuk)},rec)); },okMsg:'Hutang tersimpan'});
 }
 function formBayarHutang(rec,preKode){
+  if(!isOwner()&&ME?.role!=='manager')return;
   const c=C(); const list=c.utang.filter(u=>u.sisa>0||(rec&&u.kode===rec.id_utang)).map(u=>[u.kode,`${u.kode} · ${u.nama} · sisa ${rp(u.sisa+(rec&&u.kode===rec.id_utang?N(rec.pokok):0))}`]);
-  openForm({title:rec?'Ubah pembayaran hutang':'Bayar hutang',values:rec||{tanggal:TODAY,id_utang:preKode||'',metode:'Transfer',bunga:'',biaya:''},
-    fields:[{k:'tanggal',label:'Tanggal bayar',type:'date',req:1},{k:'id_utang',label:'Hutang',type:'select',options:list,req:1,full:1},{k:'pokok',label:'Pokok dibayar (Rp)',type:'money',req:1},{k:'bunga',label:'Bunga (Rp)',type:'money'},{k:'biaya',label:'Biaya / admin / denda (Rp)',type:'money'},{k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti',type:'text'},{k:'catatan',label:'Catatan',type:'text'},{k:'bukti_foto',label:'Bukti bayar (foto atau PDF)',type:'upload',full:1},{k:'ringkas',type:'html'}],
+  if(!list.length)return toast('Tidak ada hutang dengan sisa tagihan.','warn');
+  openForm({lockOnSubmit:true,title:rec?'Ubah pembayaran hutang':'Bayar hutang',values:rec||{tanggal:TODAY,id_utang:preKode||'',pokok:c.utangByKode[preKode]?.sisa||'',metode:'Transfer',akun:akDef('Transfer'),bunga:'',biaya:''},
+    fields:[{k:'tanggal',label:'Tanggal bayar',type:'date',req:1},{k:'id_utang',label:'Hutang',type:'select',options:list,req:1,full:1},{k:'pokok',label:'Pokok dibayar (Rp)',type:'money',req:1},{k:'bunga',label:'Bunga (Rp)',type:'money'},{k:'biaya',label:'Biaya / admin / denda (Rp)',type:'money'},{k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti',type:'text'},{k:'catatan',label:'Catatan',type:'text'},{k:'bukti_foto',label:'Bukti bayar (foto atau PDF)',type:'upload',buktiHutang:true,full:1},{k:'ringkas',type:'html'}],
     onChange(v,api,ch){ const u=c.utangByKode[v.id_utang]; if(ch==='metode')api.set('akun',akDef(v.metode)); api.hint('metode',v.metode==='Transfer'||v.metode==='QRIS'?'Bukti transfer / QRIS wajib dilampirkan.':''); const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(ch==='id_utang'&&u)api.set('pokok',sisa);
       api.hint('pokok',u?`Sisa pokok ${rp(sisa)}`+(N(v.pokok)>sisa?' · <span class="badt">melebihi sisa</span>':''):''); api.html('ringkas',`<div class="sum"><div class="r big"><span>Total keluar kas</span><b>${rp(N(v.pokok)+N(v.bunga)+N(v.biaya))}</b></div><div class="r"><span>Bunga + biaya menjadi beban</span><b>${rp(N(v.bunga)+N(v.biaya))}</b></div></div>`); },
-    async onSubmit(v){ const u=c.utangByKode[v.id_utang]; const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(N(v.pokok)>sisa)return `Pokok melebihi sisa hutang (${rp(sisa)}).`; if(N(v.pokok)+N(v.bunga)+N(v.biaya)<=0)return 'Isi nominal pembayaran.'; if((v.metode==='Transfer'||v.metode==='QRIS')&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS (foto atau PDF).';
+    async onSubmit(v){ const u=C().utangByKode[v.id_utang]; if(!u)return 'Hutang tidak ditemukan.'; if([v.pokok,v.bunga,v.biaya].some(n=>N(n)<0))return 'Nominal pembayaran tidak boleh negatif.'; const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(N(v.pokok)>sisa)return `Pokok melebihi sisa hutang (${rp(sisa)}).`; if(N(v.pokok)+N(v.bunga)+N(v.biaya)<=0)return 'Isi nominal pembayaran.'; if((v.metode==='Transfer'||v.metode==='QRIS')&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS (foto atau PDF).';
       await put('bayar_hutang',stamp({id:rec?.id,...v,pokok:N(v.pokok),bunga:N(v.bunga),biaya:N(v.biaya)},rec)); },okMsg:'Pembayaran hutang tersimpan'});
 }
 function formGaji(rec){
@@ -3637,7 +3658,7 @@ const ACT={
   kirimSales:d=>{ const c=C(); const k=D.karyawan.find(x=>x.nama===d.s); const n=waNum(k?.hp); if(!n){toast('No. HP '+d.s+' belum diisi','bad');return} window.open(`https://wa.me/${n}?text=${encodeURIComponent(kirimSalesTeks(d.s,c,Number(d.min||31),Number(d.max||9999)))}`,'_blank'); },
   waTagih:d=>{ const c=C(); let l=c.piutang.filter(i=>i.no===d.no); if(!l.length){ l=c.inv.filter(i=>i.no===d.no&&N(i.sisa)>0).map(i=>({...i,jatuh_tempo:i.jatuh_tempo||i.tanggal})); } if(l.length)waTagihModal(l); }, waPel:d=>{ const l=C().piutang.filter(i=>String(i.pelanggan)===String(d.id)&&N(i.sisa)>0).sort((a,b)=>String(a.jatuh_tempo||'').localeCompare(String(b.jatuh_tempo||''))); if(l.length)waTagihModal(l); else toast('Tidak ada tagihan','bad'); },
   newPenjualan:()=>formPenjualan(), newPenerimaan:()=>formPenerimaan(), ajukanBri:()=>formBri(), buktiBri:d=>bukaBuktiBri(d.id), reviewBri:d=>reviewBri(d.id,d.ok==='1'), tagih:d=>formPenerimaan(null,d.no), newPelanggan:()=>formPelanggan(),
-  newPengeluaran:()=>formPengeluaran(), tagihPilih:()=>tagihPilih(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const {data,error}=await SB.storage.from('foto').createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
+  newPengeluaran:()=>formPengeluaran(), tagihPilih:()=>tagihPilih(), lvView:d=>{ F.lv_view=d.v; bump(); }, lvFull:()=>{ const el=document.getElementById('ringkasanWrap'); if(el&&el.requestFullscreen) el.requestFullscreen().catch(()=>toast('Layar penuh tidak didukung di browser ini','warn')); else toast('Layar penuh tidak didukung di browser ini','warn'); }, lihatNota:async d=>{ const bucket=d.p.startsWith('bayar-hutang/')?'bukti-setoran':'foto'; const {data,error}=await SB.storage.from(bucket).createSignedUrl(d.p,600); if(error||!data?.signedUrl)return toast('Foto nota tidak bisa dibuka','bad'); window.open(data.signedUrl,'_blank','noopener'); }, ujiQC:d=>{const r=D.produksi.find(x=>x.id===d.id); if(r)formUjiQC(r)}, ujiAirBaru:d=>formUjiAir(d.tahap), ujiAirEdit:d=>{const r=D.uji_air.find(x=>x.id===d.id); if(r)formUjiAir(r.tahap,r)}, newPeralatan:()=>formPeralatan(), newPerawatan:()=>formPerawatan(), newProduksi:()=>formProduksi(), newPemakaian:d=>formPemakaian(null,d.tgl), newPembelian:()=>formPembelian(),
   livePixel:()=>{F.lv_pixel=(F.lv_pixel===false); bump()}, newMutasi:()=>formMutasi(), newOpname:()=>formOpname(), sanCek:d=>sanToggle(d.k), absMasuk:d=>absen(d.id,'masuk'), wajahReset:d=>wajahReset(d.id), absPulang:d=>absen(d.id,'pulang'), absKet:d=>formAbsenKet(d.id), fotoProfil:d=>fotoProfil(d.id), fotoLihat:d=>fotoLihat(d.path), liveFull:()=>{const el=document.documentElement; F.lv_full=!F.lv_full; try{ if(F.lv_full){(el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el)} else if(document.fullscreenElement){document.exitFullscreen&&document.exitFullscreen()} }catch(e){} bump()}, newKeluar:()=>formKeluar(), newHutangLain:()=>formHutangLain(), newBayarHutang:()=>formBayarHutang(), bayarKode:d=>formBayarHutang(null,d.kode),
   newGaji:()=>formGaji(), newWilayah:()=>formWilayah(), ubahHarga:d=>formUbahHarga(D.wilayah.find(w=>w.id===d.id)), hargaMassal:formHargaMassal,
   csvHal:()=>csvHal(), newKaryawan:()=>formKaryawan(), newKreditur:()=>formKreditur(), newBahan:()=>formBahan(), newProduk:()=>formProduk(), editPengaturan:formPengaturan,
