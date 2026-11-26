@@ -67,7 +67,7 @@ R("""<button class="linkbtn" data-act="logout">Ganti</button></div><div class="m
   """${SB?'<button class="linkbtn" data-act="gantiPwSaya" style="margin-right:10px">Kata sandi</button>':''}<button class="linkbtn" data-act="logout">${SB?'Keluar':'Ganti'}</button></div><div class="mode">${SB?`<span class="dot ${SBSTATE==='online'&&navigator.onLine?'':'loc'}"></span>${SBSTATE==='online'&&navigator.onLine?'Online · tersinkron':'Offline · data di HP ini'}${Q.length?` · <button class="linkbtn" data-act="syncNow">${Q.length} menunggu kirim</button>`:''}`:`<span class="dot ${MODE==='cloud'?'':'loc'}"></span>${MODE==='cloud'?'Data bersama (cloud)':MODE==='local'?'Mode lokal — hanya di perangkat ini':'Menghubungkan…'}`}</div>""")
 R('data-act="gantiPw">Ganti password owner</button>', 'data-act="gantiPw">${SB?\'Ganti password saya\':\'Ganti password owner\'}</button>')
 
-R("</div></div></aside>`;", '</div>${SB?`<div class="mode" style="opacity:.65">Versi ${APP_VER}</div>`:\'\'}</div></aside>`;')
+R("</div></div></aside>`;", '</div>${SB?`<div class="mode"><span style="opacity:.65">Versi ${APP_VER}</span> · <button class="linkbtn" data-act="cekUpdate">Cek pembaruan</button></div>`:\'\'}</div></aside>`;')
 # --- unduhan & halaman data
 R("const dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;",
   "const dl=SB?{save:({filename,data})=>saveFile(filename,data)}:(window.claude&&window.claude.use?await window.claude.use('downloads'):null);")
@@ -86,6 +86,9 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventLi
 lib = open('build/node_modules/@supabase/supabase-js/dist/umd/supabase.js', encoding='utf-8').read()
 s = s.replace('/*SUPABASE_INLINE*/', lib, 1)
 open(f'{OUT}/index.html', 'w', encoding='utf-8').write(s)
+import re as _re, json as _json
+_ver = _re.search(r"const APP_VER = '([^']+)'", open('sb-layer.js', encoding='utf-8').read()).group(1)
+open(f'{OUT}/version.json', 'w', encoding='utf-8').write(_json.dumps({'v': _ver}))
 if os.path.exists(f'{OUT}/supabase.js'): os.remove(f'{OUT}/supabase.js')
 for f in ['sw.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', '_headers', 'qr.js', 'jsqr.js']:
     p = f'static/{f}'

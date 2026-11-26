@@ -142,3 +142,22 @@ V.riwayat=()=>{
     `<div class="card">${body}</div>`;
 };
 ACT.logMuat=()=>loadLog();
+
+/* ---- Pembaruan aplikasi: cek versi baru di server, tawarkan muat ulang ---- */
+let UPD_NEW='';
+async function cekUpdate(manual){
+  try{ const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok)throw new Error(r.status); const j=await r.json();
+    if(j.v&&j.v!==APP_VER){ UPD_NEW=j.v; updBanner(); }
+    else if(manual)toast('Aplikasi sudah versi terbaru ('+APP_VER+')');
+  }catch(e){ if(manual)toast('Tidak bisa cek pembaruan. Periksa koneksi internet.','bad'); }
+}
+function updBanner(){ if(!UPD_NEW)return; let d=document.getElementById('upd-bar'); if(!d){d=document.createElement('div');d.id='upd-bar';d.className='upd-bar';d.setAttribute('role','status');document.body.appendChild(d);}
+  d.innerHTML=`<span>Versi baru tersedia <b>${esc(UPD_NEW)}</b></span><button type="button" class="btn sm pri" id="upd-go">Perbarui sekarang</button><button type="button" class="btn sm ghost" id="upd-x" aria-label="Nanti saja">Nanti</button>`;
+  d.querySelector('#upd-go').onclick=terapkanUpdate; d.querySelector('#upd-x').onclick=()=>d.remove(); }
+async function terapkanUpdate(){ const b=document.getElementById('upd-go'); if(b){b.disabled=true;b.textContent='Memperbarui…'}
+  try{ if('serviceWorker' in navigator){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.update().catch(()=>{})));}
+    if(window.caches){const ks=await caches.keys();await Promise.all(ks.filter(k=>!k.startsWith('cn-face')).map(k=>caches.delete(k)));} }catch(e){}
+  location.reload(); }
+ACT.cekUpdate=()=>cekUpdate(true);
+if(location.protocol==='https:'){ setTimeout(()=>cekUpdate(false),8000); setInterval(()=>cekUpdate(false),15*60*1000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')cekUpdate(false)}); }
