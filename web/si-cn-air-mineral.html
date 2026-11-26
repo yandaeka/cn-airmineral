@@ -284,6 +284,7 @@ td.act{white-space:nowrap;text-align:right}
 .tpi button{all:unset;cursor:pointer;font-size:12.5px;font-weight:700;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2)}
 .okc{width:72px;height:72px;border-radius:999px;background:var(--ok-soft,#e1f3e9);color:var(--ok,#1d7a4c);display:grid;place-items:center}
 .mf .err:empty{display:none}
+.upl{display:grid;gap:6px}.upl-b{display:flex;gap:6px;flex-wrap:wrap}.upl-b .btn{min-height:40px}
 .sum{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px;font-size:13px}
 .sum .r{display:flex;justify-content:space-between;gap:10px}
 .sum .r b{font-variant-numeric:tabular-nums}
@@ -2429,7 +2430,7 @@ V.hutang=()=>{
   `<div class="kpis">${kpi('Total hutang',rp(tot),'','hl')}${kpi('Hutang supplier',rp(sup))}${kpi('Hutang lain',rp(tot-sup))}${kpi('Jatuh tempo ≤ 7 hari',rp(jt7.reduce((a,u)=>a+u.sisa,0)),jt7.length+' tagihan',jt7.length?'warn':'')}</div>`+
   tabs('hutang',[['daftar','Daftar hutang'],['bayar','Riwayat pembayaran']])+
   (t==='daftar'?tbl([{h:'ID',f:u=>`<span class="mono">${esc(u.kode)}</span>`},{h:'Kreditur',f:u=>`<b>${esc(u.nama)}</b><span class="sub">${esc(u.jenis)}${u.ref?' · '+esc(u.ref):''}</span>`},{h:'Tanggal',f:u=>tgl(u.tanggal)},{h:'Nominal awal',c:'num',f:u=>rp(u.nominal)},{h:'Pokok dibayar',c:'num',f:u=>rp(u.dibayar)},{h:'Sisa',c:'num',f:u=>`<b>${rp(u.sisa)}</b>`},{h:'Jatuh tempo',f:u=>tgl(u.jatuh_tempo)},{h:'Status',f:u=>stc(u.status)},{h:'',c:'act',f:u=>(u.sisa>0?`<button class="btn sm pri" data-act="bayarKode" data-kode="${esc(u.kode)}">Bayar</button>`:'')+(u.id?` <button class="btn sm ghost" data-act="edit" data-col="hutang_lain" data-id="${u.id}">Ubah</button>`:'')}],c.utang,{empty:'Belum ada hutang.',foot:['','Total','',rp(c.utang.reduce((a,u)=>a+u.nominal,0)),rp(c.utang.reduce((a,u)=>a+u.dibayar,0)),rp(tot),'','','']})
-  :tbl([{h:'Tanggal',f:b=>tgl(b.tanggal)},{h:'ID hutang',f:b=>`<span class="mono">${esc(b.id_utang)}</span><span class="sub">${esc(c.utangByKode[b.id_utang]?.nama||'')}</span>`},{h:'Pokok',c:'num',f:b=>rp(b.pokok)},{h:'Bunga',c:'num',f:b=>rp(b.bunga)},{h:'Biaya/denda',c:'num',f:b=>rp(b.biaya)},{h:'Total',c:'num',f:b=>`<b>${rp(N(b.pokok)+N(b.bunga)+N(b.biaya))}</b>`},{h:'Metode',f:b=>esc(b.metode)},{h:'Bukti',f:b=>esc(b.bukti||'')},{h:'',c:'act',f:b=>actCell('bayar_hutang',b)}],pays,{empty:'Belum ada pembayaran hutang.'}));
+  :tbl([{h:'Tanggal',f:b=>tgl(b.tanggal)},{h:'ID hutang',f:b=>`<span class="mono">${esc(b.id_utang)}</span><span class="sub">${esc(c.utangByKode[b.id_utang]?.nama||'')}</span>`},{h:'Pokok',c:'num',f:b=>rp(b.pokok)},{h:'Bunga',c:'num',f:b=>rp(b.bunga)},{h:'Biaya/denda',c:'num',f:b=>rp(b.biaya)},{h:'Total',c:'num',f:b=>`<b>${rp(N(b.pokok)+N(b.bunga)+N(b.biaya))}</b>`},{h:'Metode',f:b=>esc(b.metode)+(b.bukti_foto?`<br><button class="btn sm ghost" data-act="lihatNota" data-p="${esc(b.bukti_foto)}">Lihat bukti</button>`:'')},{h:'Bukti',f:b=>esc(b.bukti||'')},{h:'',c:'act',f:b=>actCell('bayar_hutang',b)}],pays,{empty:'Belum ada pembayaran hutang.'}));
 };
 
 V.gaji=()=>{
@@ -2952,7 +2953,7 @@ function fieldHTML(f,v){
   if(f.type==='select'&&segOK(f)){ const n=(f.options||[]).length; inp=`<div class="seg ${n<=3&&!f.wrap?'seg-fill':'seg-wrap'}" data-seg="${f.k}" role="radiogroup" aria-label="${esc(f.label||'')}"><input type="hidden" id="${id}" name="${f.k}" value="${esc(v??'')}">${segBtns(f,v)}</div>`; }
   else if(f.type==='number'&&!f.ro&&(f.big||STEP_RX.test(f.k))){ inp=`<div class="stp ${f.big||/^(dus|aktual)$/.test(f.k)?'big':''}"><button type="button" class="stpb" data-stp="${f.k}" data-d="-1" aria-label="Kurangi">−</button><input id="${id}" name="${f.k}" type="number" inputmode="numeric" step="${f.step||1}" min="0" value="${esc(v??'')}" ${f.ph?`placeholder="${esc(f.ph)}"`:'placeholder="0"'}${req}><button type="button" class="stpb plus" data-stp="${f.k}" data-d="1" aria-label="Tambah">+</button></div>`; }
   else if(f.type==='select')inp=`<select id="${id}" name="${f.k}"${req}${ro}>${f.ph===false?'':`<option value="">${esc(f.ph||'— pilih —')}</option>`}${optsHTML(f.options,v)}</select>`;
-  else if(f.type==='upload')inp=`<div class="upl"><input type="file" accept="image/*,application/pdf" data-upload="${f.k}"><input type="hidden" name="${f.k}" value="${esc(v??'')}"><small id="h_${f.k}" class="hint">${v?'✓ Foto nota tersimpan di server':'Foto nota atau PDF (opsional). Akan disimpan di server.'}</small></div>`;
+  else if(f.type==='upload')inp=`<div class="upl"><div class="upl-b"><button type="button" class="btn sm" data-upick="${f.k}" data-cam="1">Ambil foto</button><button type="button" class="btn sm" data-upick="${f.k}">Pilih foto / PDF</button>${v?`<button type="button" class="btn sm ghost" data-act="lihatNota" data-p="${esc(v)}">Lihat</button>`:''}</div><input type="file" accept="image/*" capture="environment" data-upload="${f.k}" hidden><input type="file" accept="image/*,application/pdf" data-upload="${f.k}" data-file="1" hidden><input type="hidden" name="${f.k}" value="${esc(v??'')}"><small id="h_${f.k}" class="hint">${v?'✓ Bukti tersimpan di server':'Foto dari kamera, galeri, atau file PDF.'}</small></div>`;
   else if(f.type==='textarea')inp=`<textarea id="${id}" name="${f.k}" rows="2">${esc(v??'')}</textarea>`;
   else if(f.type==='check')inp=`<label class="check"><input type="checkbox" id="${id}" name="${f.k}" ${v?'checked':''}> <span>${esc(f.text)}</span></label>`;
   else { const isN=f.type==='money'||f.type==='number'; inp=`<input id="${id}" name="${f.k}" ${f.type==='money'?'class="money"':''} type="${isN?'number':f.type||'text'}" ${f.type==='money'?'step="1" inputmode="numeric"':''} ${f.type==='number'?`step="${f.step||'any'}" inputmode="decimal"`:''} ${isN&&f.min!==null?`min="${f.min??0}"`:''} value="${esc(v??'')}" ${f.ph?`placeholder="${esc(f.ph)}"`:''}${req}${ro}>`; }
@@ -2971,7 +2972,7 @@ function openForm(cfg){
     try{ if(hint)hint.textContent='Mengunggah nota…'; const acak=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
       if(f.type==='application/pdf'){ if(f.size>10*1024*1024) throw new Error('PDF maksimal 10 MB'); const path=`nota/${TODAY}/${acak}.pdf`; const {error}=await SB.storage.from('foto').upload(path,f,{contentType:'application/pdf',upsert:false}); if(error) throw error; h.value=path; }
       else { if(hint)hint.textContent='Mengecilkan foto…'; const blob=await kompres(f,1200,0.75); const path=`nota/${TODAY}/${acak}.jpg`; if(hint)hint.textContent='Mengunggah nota… ('+Math.round(blob.size/1024)+' KB)'; await Promise.race([unggahFoto(path,blob),new Promise((_,no)=>setTimeout(()=>no(new Error('koneksi lambat, sinyal dicek lalu pilih foto lagi')),40000))]); h.value=path; }
-      if(hint)hint.textContent='✓ Nota tersimpan di server'; }
+      if(hint)hint.textContent='✓ Bukti tersimpan di server ('+(f.type==='application/pdf'?'PDF':'foto')+')'; }
     catch(e){ if(hint)hint.textContent='Gagal unggah foto: '+(e.message||e); el.value=''; h.value=''; }
   }));
   form.querySelectorAll('input[data-search]').forEach(t=>t.addEventListener('input',()=>{const k=t.dataset.search; const f=fields.find(x=>x.k===k); const hit=(f.options||[]).find(o=>(Array.isArray(o)?o[1]:o)===t.value.trim()); form.elements[k].value=hit?(Array.isArray(hit)?hit[0]:hit):''; fire(k)}));
@@ -2982,6 +2983,7 @@ function openForm(cfg){
   form.addEventListener('input',e=>fire(e.target.name));
   form.addEventListener('change',e=>{if(e.target.tagName==='SELECT'||e.target.type==='date'||e.target.type==='checkbox')fire(e.target.name)});
   form.addEventListener('click',e=>{const b=e.target.closest('[data-fbtn]');if(b){const f=fields.find(x=>x.k===b.dataset.fbtn);f?.onClick?.(vals(),api);fire(f.k);return}
+    const up=e.target.closest('[data-upick]');if(up){const box=up.closest('.upl');box.querySelector(up.dataset.cam?'input[capture]':'input[data-file]').click();return}
     const sb=e.target.closest('[data-segv]');if(sb){const k=sb.closest('[data-seg]').dataset.seg;const f=fields.find(x=>x.k===k)||{};const el=form.elements[k];el.value=(sb.classList.contains('on')&&!f.req&&f.ph!==false)?'':sb.dataset.segv;segSync(k);fire(k);return}
     const st=e.target.closest('[data-stp]');if(st){const el=form.elements[st.dataset.stp];if(!el)return;const s=Number(el.step)||1;el.value=Math.max(0,(Number(el.value)||0)+Number(st.dataset.d)*s);el.dispatchEvent(new Event('input',{bubbles:true}));}});
   let swX=null,swBox=null; form.addEventListener('touchstart',e=>{swBox=e.target.closest('.seg-fill');swX=swBox?e.touches[0].clientX:null},{passive:true});
@@ -3026,7 +3028,7 @@ function formPenjualan(rec){
       {k:'pelanggan',label:'Toko / pelanggan',type:'search',options:pelOpts(),ph:'Ketik nama pelanggan. Kosongkan = tunai umum',full:1},
       {k:'dus',label:'Jumlah dus',type:'number',step:1,req:1,big:1,full:1},
       {k:'harga',label:'Harga / dus (Rp)',type:'money',req:1},{k:'jatuh_tempo',label:'Jatuh tempo',type:'date'},
-      {k:'terima',type:'check',text:'Uang sudah diterima — catat penerimaan otomatis',full:1,hidden:true},{k:'metode',label:'Diterima lewat',type:'select',options:['Tunai','Transfer','QRIS'],ph:false,hidden:true,full:1},
+      {k:'terima',type:'check',text:'Uang sudah diterima — catat penerimaan otomatis',full:1,hidden:true},{k:'metode',label:'Diterima lewat',type:'select',options:['Tunai','Transfer','QRIS'],ph:false,hidden:true,full:1},{k:'bukti_foto',label:'Bukti bayar (foto atau PDF)',type:'upload',full:1,hidden:true},
       {k:'muatan_id',label:'Kendaraan (muatan)',type:'select',options:muatOpts(),ph:'— pilih muatan —',full:1,req:0,wrap:1},
       {k:'dari_gudang',type:'check',text:'Ambil langsung dari gudang',full:1,hidden:true},
       {k:'gudang_info',type:'html',full:1},
@@ -3050,7 +3052,7 @@ function formPenjualan(rec){
       api.hint('bonus',w&&N(w.bonus_per)?`Aturan wilayah: 1 dus tiap ${w.bonus_per} dus`:'');
       api.hint('jatuh_tempo',v.jenis==='Kredit'?`Tempo ${N(w?.termin??c.S.termin_default)||30} hari`:'');
       api.show('jatuh_tempo',v.jenis==='Kredit');
-      const tunaiNew=v.jenis==='Tunai'&&!edit; api.show('terima',tunaiNew); api.show('metode',tunaiNew&&v.terima);
+      const tunaiNew=v.jenis==='Tunai'&&!edit; api.show('terima',tunaiNew); api.show('metode',tunaiNew&&v.terima); api.show('bukti_foto',tunaiNew&&v.terima&&v.metode!=='Transfer'); api.hint('metode',tunaiNew&&v.terima?(v.metode==='Transfer'?'Setelah simpan, lanjut ke form bukti transfer BRI.':v.metode==='QRIS'?'Bukti QRIS wajib dilampirkan.':''):'');
       const kotor=N(v.dus)*N(v.harga), bersih=kotor-N(v.diskon)-N(v.retur)*N(v.harga);
       const keluar=N(v.dus)+N(v.bonus)-(edit?N(rec.dus)+N(rec.bonus):0); const stok=c.stokNow;
       const pi=(c.piutangPel[v.pelanggan]||0)-(edit&&rec.jenis==='Kredit'?(c.invByNo[rec.no]?.sisa||0):0); const lim=N(p?.limit_kredit);
@@ -3071,11 +3073,12 @@ function formPenjualan(rec){
       if(!v.pelanggan&&ptx){ const m=pelCocok(ptx); if(m.length===1)v.pelanggan=m[0].id; else { v.pelanggan=await put('pelanggan',{id:'pl-'+genId(),nama:ptx.toUpperCase(),wilayah:'',sales:v.sales,alamat:'',hp:'',catatan:'Dibuat otomatis dari penjualan '+no,dibuat_oleh:meName(),dibuat_pada:nowStamp()}); } }
       const p=c.pel[v.pelanggan]||D.pelanggan.find(x=>x.id===v.pelanggan);
       const r=stamp({dari_gudang:dariGudang,muatan_id:muatanId||rec?.muatan_id||'',id:edit?rec.id:'pj-'+no,no,tanggal:v.tanggal,sales:v.sales,pelanggan:v.pelanggan||'',pelanggan_nama:p?.nama||(v.pelanggan?'':'Tunai umum'),jenis:v.jenis,dus:N(v.dus),bonus:N(v.bonus),harga:N(v.harga),diskon:N(v.diskon),retur:N(v.retur),jatuh_tempo:v.jenis==='Kredit'?v.jatuh_tempo:'',catatan:v.catatan},edit?rec:null);
+      if(!edit&&v.jenis==='Tunai'&&v.terima&&v.metode==='QRIS'&&!v.bukti_foto)return 'Lampirkan bukti QRIS (foto atau PDF).';
       await put('penjualan',r);
       if(!edit&&v.jenis==='Tunai'&&v.terima&&v.metode==='Transfer'){
         return ()=>{toast('Penjualan tersimpan. Ajukan bukti transfer BRI.');formBri(no,v.tanggal);};
       }
-      if(!edit&&v.jenis==='Tunai'&&v.terima){const bersih=N(v.dus)*N(v.harga)-N(v.diskon)-N(v.retur)*N(v.harga);await put('pembayaran',stamp({tanggal:v.tanggal,jenis:'Penjualan tunai',pembayar:p?.nama||('Tunai '+v.sales),metode:v.metode||'Tunai',akun:akDef(v.metode),nominal:bersih,ref:no,catatan:'otomatis dari penjualan'}))}
+      if(!edit&&v.jenis==='Tunai'&&v.terima){const bersih=N(v.dus)*N(v.harga)-N(v.diskon)-N(v.retur)*N(v.harga);await put('pembayaran',stamp({tanggal:v.tanggal,jenis:'Penjualan tunai',pembayar:p?.nama||('Tunai '+v.sales),metode:v.metode||'Tunai',akun:akDef(v.metode),nominal:bersih,ref:no,catatan:'otomatis dari penjualan',bukti_foto:v.bukti_foto||''}))}
       if(!edit)setTimeout(()=>showNota(no),80);
     },okMsg:edit?'Penjualan diperbarui':'Penjualan tersimpan'});
 }
@@ -3119,13 +3122,13 @@ function formPenerimaan(rec,preNo){
   openForm({title:edit?'Ubah penerimaan':sales?'Catat penagihan':'Catat penerimaan',values:edit?rec:{tanggal:TODAY,jenis:pre?(pre.jenis==='Tunai'?'Penjualan tunai':'Penagihan piutang'):'Penagihan piutang',metode:'Tunai',akun:c.S.akun[0],ref:preNo||'',pembayar:pre?.pelNama||'',nominal:pre?pre.sisa:''},
     fields:[{k:'tanggal',label:'Tanggal terima',type:'date',req:1},{k:'jenis',label:'Jenis penerimaan',type:'select',options:jenis,ph:false,req:1,hint:'Panjar dan pelunasan sama-sama “Penagihan piutang”. Pinjaman dicatat di menu Hutang.'},
       {k:'ref',label:'Nomor invoice',type:'select',options:invList(),full:1},{k:'pembayar',label:'Pelanggan / pembayar',type:'text',req:1},{k:'nominal',label:'Uang diterima (Rp)',type:'money',req:1,full:1},
-      {k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Masuk ke'),{k:'bukti_foto',label:'Bukti transfer / QRIS (foto atau PDF)',type:'upload',full:1,hidden:true,hint:'Wajib untuk Transfer dan QRIS.'},{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1}],
+      {k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Masuk ke'),{k:'bukti_foto',label:'Bukti bayar / nota (foto atau PDF)',type:'upload',full:1},{k:'catatan',label:'Catatan / no. bukti',type:'text',full:1}],
     onChange(v,api,ch){ const needRef=v.jenis==='Penagihan piutang'||v.jenis==='Penjualan tunai'; api.show('ref',needRef);
       if(ch==='metode')api.set('akun',v.metode==='Transfer'&&sales?'Bank BRI':akDef(v.metode));
       if(ch==='metode')v.akun=v.metode==='Transfer'&&sales?'Bank BRI':akDef(v.metode);
-      api.show('bukti_foto',!isBriReceipt(v)&&(v.metode==='Transfer'||v.metode==='QRIS'));
+      api.show('bukti_foto',!isBriReceipt(v)); api.hint('metode',(v.metode==='Transfer'||v.metode==='QRIS')&&!isBriReceipt(v)?'Bukti transfer / QRIS wajib dilampirkan di bawah.':'');
       api.show('akun',!(sales&&v.metode==='Transfer'));
-      api.hint('metode',isBriReceipt(v)?'Transfer BRI akan diajukan untuk verifikasi.':'');
+      if(isBriReceipt(v))api.hint('metode','Transfer BRI akan diajukan untuk verifikasi.');
       const i=c.invByNo[v.ref]; if(ch==='ref'&&i){api.set('pembayar',i.pelNama);api.set('nominal',i.sisa)}
       const sisa=i?i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0):null;
       api.hint('nominal',i?`Sisa tagihan ${rp(sisa)}`+(N(v.nominal)>sisa?' · <span class="badt">melebihi sisa</span>':N(v.nominal)&&N(v.nominal)<sisa?` · panjar, sisa setelah ini ${rp(sisa-N(v.nominal))}`:N(v.nominal)===sisa?' · <span class="okt">lunas</span>':''):''); },
@@ -3139,7 +3142,7 @@ function formPenerimaan(rec,preNo){
       const butuhBukti=v.metode==='Transfer'||v.metode==='QRIS';
       if(butuhBukti&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS.';
       const sblm=i?i.sisa+(edit&&rec.ref===v.ref?N(rec.nominal):0):0;
-      await put('pembayaran',stamp({id:rec?.id,tanggal:v.tanggal,jenis:v.jenis,pembayar:v.pembayar,metode:v.metode,akun:v.akun,nominal:N(v.nominal),ref:needRef?v.ref:'',catatan:v.catatan,bukti_foto:butuhBukti?(v.bukti_foto||''):''},rec));
+      await put('pembayaran',stamp({id:rec?.id,tanggal:v.tanggal,jenis:v.jenis,pembayar:v.pembayar,metode:v.metode,akun:v.akun,nominal:N(v.nominal),ref:needRef?v.ref:'',catatan:v.catatan,bukti_foto:v.bukti_foto||''},rec));
       if(!edit&&v.jenis==='Penagihan piutang'&&v.ref)setTimeout(()=>tagihSelesai({ref:v.ref,nominal:N(v.nominal),metode:v.metode,pembayar:v.pembayar,bukti:!!v.bukti_foto,sisa:Math.max(0,sblm-N(v.nominal))}),80); },okMsg:'Penerimaan tersimpan'});
 }
 function formPelanggan(rec){
@@ -3152,10 +3155,10 @@ function formPelanggan(rec){
 function formPengeluaran(rec){
   const kats=[...new Set([...L.kategoriBiaya,...D.pengeluaran.map(e=>e.kategori).filter(k=>k&&!L.kategoriTerkunci.includes(k))])];
   openForm({title:rec?'Ubah pengeluaran':'Pengeluaran baru',values:rec||{tanggal:TODAY,metode:'Tunai',akun:C().S.akun[0]},
-    fields:[{k:'tanggal',label:'Tanggal',type:'date',req:1},{k:'kategori',label:'Kategori',type:'select',options:kats,req:1},{k:'keterangan',label:'Keterangan',type:'text',req:1,full:1,ph:'mis. solar pick up, token listrik, konsumsi 5 orang'},{k:'nominal',label:'Nominal (Rp)',type:'money',req:1},{k:'metode',label:'Metode bayar',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti / nota',type:'text'},{k:'nota_foto',label:'Foto nota',type:'upload',full:1}],
+    fields:[{k:'tanggal',label:'Tanggal',type:'date',req:1},{k:'kategori',label:'Kategori',type:'select',options:kats,req:1},{k:'keterangan',label:'Keterangan',type:'text',req:1,full:1,ph:'mis. solar pick up, token listrik, konsumsi 5 orang'},{k:'nominal',label:'Nominal (Rp)',type:'money',req:1},{k:'metode',label:'Metode bayar',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti / nota',type:'text'},{k:'nota_foto',label:'Foto nota / bukti transfer (foto atau PDF)',type:'upload',full:1}],
     onChange(v,api,ch){ if(ch==='metode')api.set('akun',akDef(v.metode)); const t=v.keterangan||'';
       api.hint('keterangan',/angsur|ansur|cicil|hutang|utang|pinjam|talangan/i.test(t)?'<span class="warnt">Pembayaran cicilan/hutang/talangan dicatat di menu Hutang → Bayar hutang.</span>':/pak ipan|beli (gelas|cup|lid|karton|kardus|pipet|sedotan|lakban)|bayar bahan|pembayaran bahan/i.test(t)?'<span class="warnt">Pembelian bahan baku dicatat di menu Pembelian Bahan.</span>':/gaji/i.test(t)?'<span class="warnt">Gaji dicatat di menu Gaji.</span>':/setor|transfer ke (bsi|bri|bank)/i.test(t)?'<span class="warnt">Setoran ke bank dicatat di Kas & Bank → Setor / transfer.</span>':/insentif/i.test(t)&&v.kategori!=='Insentif sales'?'Pilih kategori “Insentif sales”.':''); },
-    async onSubmit(v){ if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.'; await put('pengeluaran',stamp({id:rec?.id,...v,nominal:N(v.nominal)},rec)); }});
+    async onSubmit(v){ if(N(v.nominal)<=0)return 'Nominal harus lebih dari 0.'; if((v.metode==='Transfer'||v.metode==='QRIS')&&!v.nota_foto)return 'Lampirkan bukti transfer / QRIS (foto atau PDF).'; await put('pengeluaran',stamp({id:rec?.id,...v,nominal:N(v.nominal)},rec)); }});
 }
 /* ===== BATCH & QC PRODUKSI (PK.8.5.02, PK.9.1.02) =====
    Kode batch: CN220-YYMMDD. Satu tanggal produksi = satu batch.
@@ -3326,10 +3329,10 @@ function formHutangLain(rec){
 function formBayarHutang(rec,preKode){
   const c=C(); const list=c.utang.filter(u=>u.sisa>0||(rec&&u.kode===rec.id_utang)).map(u=>[u.kode,`${u.kode} · ${u.nama} · sisa ${rp(u.sisa+(rec&&u.kode===rec.id_utang?N(rec.pokok):0))}`]);
   openForm({title:rec?'Ubah pembayaran hutang':'Bayar hutang',values:rec||{tanggal:TODAY,id_utang:preKode||'',metode:'Transfer',bunga:'',biaya:''},
-    fields:[{k:'tanggal',label:'Tanggal bayar',type:'date',req:1},{k:'id_utang',label:'Hutang',type:'select',options:list,req:1,full:1},{k:'pokok',label:'Pokok dibayar (Rp)',type:'money',req:1},{k:'bunga',label:'Bunga (Rp)',type:'money'},{k:'biaya',label:'Biaya / admin / denda (Rp)',type:'money'},{k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti',type:'text'},{k:'catatan',label:'Catatan',type:'text'},{k:'ringkas',type:'html'}],
-    onChange(v,api,ch){ const u=c.utangByKode[v.id_utang]; const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(ch==='id_utang'&&u)api.set('pokok',sisa);
+    fields:[{k:'tanggal',label:'Tanggal bayar',type:'date',req:1},{k:'id_utang',label:'Hutang',type:'select',options:list,req:1,full:1},{k:'pokok',label:'Pokok dibayar (Rp)',type:'money',req:1},{k:'bunga',label:'Bunga (Rp)',type:'money'},{k:'biaya',label:'Biaya / admin / denda (Rp)',type:'money'},{k:'metode',label:'Metode',type:'select',options:L.metode,ph:false},akunF('akun','Dibayar dari'),{k:'bukti',label:'No. bukti',type:'text'},{k:'catatan',label:'Catatan',type:'text'},{k:'bukti_foto',label:'Bukti bayar (foto atau PDF)',type:'upload',full:1},{k:'ringkas',type:'html'}],
+    onChange(v,api,ch){ const u=c.utangByKode[v.id_utang]; if(ch==='metode')api.set('akun',akDef(v.metode)); api.hint('metode',v.metode==='Transfer'||v.metode==='QRIS'?'Bukti transfer / QRIS wajib dilampirkan.':''); const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(ch==='id_utang'&&u)api.set('pokok',sisa);
       api.hint('pokok',u?`Sisa pokok ${rp(sisa)}`+(N(v.pokok)>sisa?' · <span class="badt">melebihi sisa</span>':''):''); api.html('ringkas',`<div class="sum"><div class="r big"><span>Total keluar kas</span><b>${rp(N(v.pokok)+N(v.bunga)+N(v.biaya))}</b></div><div class="r"><span>Bunga + biaya menjadi beban</span><b>${rp(N(v.bunga)+N(v.biaya))}</b></div></div>`); },
-    async onSubmit(v){ const u=c.utangByKode[v.id_utang]; const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(N(v.pokok)>sisa)return `Pokok melebihi sisa hutang (${rp(sisa)}).`; if(N(v.pokok)+N(v.bunga)+N(v.biaya)<=0)return 'Isi nominal pembayaran.';
+    async onSubmit(v){ const u=c.utangByKode[v.id_utang]; const sisa=u?u.sisa+(rec&&rec.id_utang===v.id_utang?N(rec.pokok):0):0; if(N(v.pokok)>sisa)return `Pokok melebihi sisa hutang (${rp(sisa)}).`; if(N(v.pokok)+N(v.bunga)+N(v.biaya)<=0)return 'Isi nominal pembayaran.'; if((v.metode==='Transfer'||v.metode==='QRIS')&&!v.bukti_foto)return 'Lampirkan bukti transfer / QRIS (foto atau PDF).';
       await put('bayar_hutang',stamp({id:rec?.id,...v,pokok:N(v.pokok),bunga:N(v.bunga),biaya:N(v.biaya)},rec)); },okMsg:'Pembayaran hutang tersimpan'});
 }
 function formGaji(rec){
